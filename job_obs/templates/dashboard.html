@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-4">
+  <h1 class="display-5 fw-bold mb-3">Dashboard do Mercado de Trabalho em Dados</h1>
+  <p class="lead text-muted">Explore as principais visualizações geradas automaticamente a partir do conjunto de dados coletado pelo observatório.</p>
+</div>
+
+{% if summary %}
+<div class="row g-4 mb-5">
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <h6 class="text-uppercase text-muted">Registros analisados</h6>
+        <h3 class="mb-0">{{ summary.total_registros | int }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <h6 class="text-uppercase text-muted">Salário base médio</h6>
+        <h3 class="mb-0">R$ {{ summary.media_salario | round(2) | string }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <h6 class="text-uppercase text-muted">Salário base mediano</h6>
+        <h3 class="mb-0">R$ {{ summary.mediana_salario | round(2) | string }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <h6 class="text-uppercase text-muted">Remuneração total média</h6>
+        <h3 class="mb-0">R$ {{ summary.media_remuneracao_total | round(2) | string }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if sample_jobs %}
+<div class="card shadow-sm border-0 mb-5">
+  <div class="card-body">
+    <h2 class="h4 mb-3">Amostra de Vagas</h2>
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Cargo</th>
+            <th>Nível</th>
+            <th>Estado</th>
+            <th>Modalidade</th>
+            <th>Salário Base</th>
+            <th>Remuneração Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vaga in sample_jobs %}
+          <tr>
+            <td>{{ vaga.cargo or '—' }}</td>
+            <td>{{ vaga.nivel or '—' }}</td>
+            <td>{{ vaga.estado or '—' }}</td>
+            <td>{{ vaga.modalidade_trabalho or '—' }}</td>
+            <td>
+              {% if vaga.salario_base is not none %}
+                R$ {{ vaga.salario_base | round(2) | string }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if vaga.remuneracao_total_mensal is defined and vaga.remuneracao_total_mensal is not none %}
+                R$ {{ vaga.remuneracao_total_mensal | round(2) | string }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if visualizations %}
+  {% for viz in visualizations %}
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h2 class="h4 mb-1">{{ viz.title }}</h2>
+            <p class="mb-0 text-muted">{{ viz.description }}</p>
+          </div>
+        </div>
+        <div id="{{ viz.id }}" class="plotly-chart" style="height: 500px;"></div>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="alert alert-warning">Nenhum dado disponível para exibir no momento.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script id="visualizations-data" type="application/json">
+    {{ visualizations | tojson | safe }}
+  </script>
+  <script>
+    const plotDataElement = document.getElementById('visualizations-data');
+    let visualizations = [];
+    if (plotDataElement) {
+      try {
+        visualizations = JSON.parse(plotDataElement.textContent);
+      } catch (error) {
+        console.error('Não foi possível carregar os dados dos gráficos.', error);
+      }
+    }
+    visualizations.forEach((viz) => {
+      const target = document.getElementById(viz.id);
+      if (!target) return;
+      Plotly.newPlot(target, viz.figure.data, viz.figure.layout, {responsive: true, displaylogo: false});
+    });
+  </script>
+{% endblock %}

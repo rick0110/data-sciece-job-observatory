@@ -9,34 +9,46 @@
 {% if summary %}
 <div class="row g-4 mb-5">
   <div class="col-md-3">
-    <div class="card shadow-sm border-0 h-100">
-      <div class="card-body">
+    <div class="card shadow-sm border-5 h-100 rounded-5">
+      <div class="card-body rounded-5">
         <h6 class="text-uppercase text-muted">Registros analisados</h6>
-        <h3 class="mb-0">{{ summary.total_registros | int }}</h3>
+          <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
+          <h3 class="mb-0 hidden-until-ready">
+            <span class="count-up" data-value="{{ summary.total_registros }}">{{ summary.total_registros }}</span>
+          </h3>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card shadow-sm border-0 h-100">
-      <div class="card-body">
+    <div class="card shadow-sm border-5 h-100 rounded-5">
+      <div class="card-body rounded-5">
         <h6 class="text-uppercase text-muted">Salário base médio</h6>
-        <h3 class="mb-0">R$ {{ summary.media_salario | round(2) | string }}</h3>
+          <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
+          <h3 class="mb-0 hidden-until-ready">
+            <span class="count-up currency" data-value="{{ summary.media_salario }}">{{ summary.media_salario | currency }}</span>
+          </h3>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card shadow-sm border-0 h-100">
-      <div class="card-body">
+    <div class="card shadow-sm border-5 h-100 rounded-5">
+      <div class="card-body rounded-5">
         <h6 class="text-uppercase text-muted">Salário base mediano</h6>
-        <h3 class="mb-0">R$ {{ summary.mediana_salario | round(2) | string }}</h3>
+          <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
+          <h3 class="mb-0 hidden-until-ready">
+            <span class="count-up currency" data-value="{{ summary.mediana_salario }}">{{ summary.mediana_salario | currency }}</span>
+          </h3>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card shadow-sm border-0 h-100">
-      <div class="card-body">
+    <div class="card shadow-sm border-5 h-100 rounded-5">
+      <div class="card-body rounded-5">
         <h6 class="text-uppercase text-muted">Remuneração total média</h6>
-        <h3 class="mb-0">R$ {{ summary.media_remuneracao_total | round(2) | string }}</h3>
+          <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
+          <h3 class="mb-0 hidden-until-ready">
+           <span class="count-up currency" data-value="{{ summary.media_remuneracao_total }}">{{ summary.media_remuneracao_total | currency }}</span>
+          </h3>
       </div>
     </div>
   </div>
@@ -44,11 +56,17 @@
 {% endif %}
 
 {% if sample_jobs %}
-<div class="card shadow-sm border-0 mb-5">
-  <div class="card-body">
-    <h2 class="h4 mb-3">Amostra de Vagas</h2>
-    <div class="table-responsive">
-      <table class="table table-striped align-middle">
+<div class="card shadow-sm border-0 mb-5 rounded-4">
+  <div class="card-body rounded-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="h4 mb-0">Amostra de Vagas</h2>
+      <div class="input-group" style="max-width: 420px;">
+        <span class="input-group-text">🔎</span>
+        <input id="jobs-search" type="search" class="form-control" placeholder="Buscar vagas (ex.: cientista remoto SP júnior)" aria-label="Buscar vagas">
+      </div>
+    </div>
+    <div class="table-responsive rounded-4">
+      <table class="table table-striped table-hover rounded-4">
         <thead>
           <tr>
             <th>Cargo</th>
@@ -59,23 +77,30 @@
             <th>Remuneração Total</th>
           </tr>
         </thead>
-        <tbody>
+  <tbody id="jobs-tbody">
+          <tr class="skeleton-row rounded-4" data-skel="table">
+            <td colspan="6">
+              <div class="skeleton skeleton-line skeleton-80"></div>
+              <div class="skeleton skeleton-line skeleton-60"></div>
+              <div class="skeleton skeleton-line skeleton-100"></div>
+            </td>
+          </tr>
           {% for vaga in sample_jobs %}
-          <tr>
+          <tr class="hidden-until-ready">
             <td>{{ vaga.cargo or '—' }}</td>
             <td>{{ vaga.nivel or '—' }}</td>
             <td>{{ vaga.estado or '—' }}</td>
             <td>{{ vaga.modalidade_trabalho or '—' }}</td>
             <td>
               {% if vaga.salario_base is not none %}
-                R$ {{ vaga.salario_base | round(2) | string }}
+                {{ vaga.salario_base | currency }}
               {% else %}
                 —
               {% endif %}
             </td>
             <td>
               {% if vaga.remuneracao_total_mensal is defined and vaga.remuneracao_total_mensal is not none %}
-                R$ {{ vaga.remuneracao_total_mensal | round(2) | string }}
+                {{ vaga.remuneracao_total_mensal | currency }}
               {% else %}
                 —
               {% endif %}
@@ -99,7 +124,12 @@
             <p class="mb-0 text-muted">{{ viz.description }}</p>
           </div>
         </div>
-        <div id="{{ viz.id }}" class="plotly-chart" style="height: 500px;"></div>
+        <div class="chart-wrapper fade-in" data-viz-id="{{ viz.id }}">
+          <div class="chart-loader" aria-hidden="true">
+            <div class="spinner" role="status" aria-label="Carregando..."></div>
+          </div>
+          <div id="{{ viz.id }}" class="plotly-chart" style="height: 500px;"></div>
+        </div>
       </div>
     </div>
   {% endfor %}
@@ -113,20 +143,8 @@
   <script id="visualizations-data" type="application/json">
     {{ visualizations | tojson | safe }}
   </script>
-  <script>
-    const plotDataElement = document.getElementById('visualizations-data');
-    let visualizations = [];
-    if (plotDataElement) {
-      try {
-        visualizations = JSON.parse(plotDataElement.textContent);
-      } catch (error) {
-        console.error('Não foi possível carregar os dados dos gráficos.', error);
-      }
-    }
-    visualizations.forEach((viz) => {
-      const target = document.getElementById(viz.id);
-      if (!target) return;
-      Plotly.newPlot(target, viz.figure.data, viz.figure.layout, {responsive: true, displaylogo: false});
-    });
-  </script>
+  <script src="./../static/js/search_sample_job.js"></script>
+  <script src="./../static/js/dark-mode.js"></script>
+  <script src="./../static/js/reduced-motion.js">
+</script>
 {% endblock %}

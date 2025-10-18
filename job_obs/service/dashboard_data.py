@@ -202,32 +202,66 @@ def build_salary_histogram(df: pd.DataFrame, template='plotly_white') -> Dict[st
         xaxis_title="Salário Base (R$)",
         yaxis_title="Quantidade de Vagas",
         bargap=0.05,
-        template="plotly_white",
+        template=template,
     )
     fig.update_traces(hovertemplate="Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
     return _figure_to_dict(fig)
 
 def build_salary_by_level(df: pd.DataFrame, template='plotly_white') -> Dict[str, Any]:
     df_level = df.dropna(subset=["salario_base", "nivel"])
-    fig = px.histogram(
-        df_level,
-        x="salario_base",
-        color="nivel",
-        nbins=25,
-        barmode="overlay",
-        opacity=0.65,
-        labels={"nivel": "Nível"},
-        color_discrete_sequence=px.colors.qualitative.Set2,
-    )
-    fig.update_layout(
-        title="Distribuição de Salários por Nível de Senioridade",
-        xaxis_title="Salário Base (R$)",
-        yaxis_title="Quantidade de Vagas",
-        template=template,
-        legend_title="Nível",
-    )
-    fig.update_traces(hovertemplate="Nível: %{legendgroup}<br>Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
-    return _figure_to_dict(fig)
+    dark_colors = [
+    "chartreuse",
+    "darksalmon",
+    "darkcyan",
+    "darkkhaki",
+    "cadetblue",
+    "darkorchid",   
+    "firebrick"     
+    ]   
+    if template == 'plotly_white':
+        fig = px.histogram(
+            df_level,
+            x="salario_base",
+            color="nivel",
+            nbins=25,
+            barmode="relative",
+            opacity=1,
+            labels={"nivel": "Nível"},
+            category_orders={"nivel": ["Estágio", "Júnior", "Pleno", "Sênior", "Especialista", "Líder / Coordenador", "Gerente"]},
+            color_discrete_sequence=px.colors.qualitative.D3,
+        )
+        fig.update_layout(
+            title="Distribuição de Salários por Nível de Senioridade",
+            xaxis_title="Faixa salarial (R$)",
+            yaxis_title="Quantidade de Vagas",
+            template=template,
+            legend_title="Nível",
+        )
+        fig.update_traces(hovertemplate="Nível: %{legendgroup}<br>Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
+        return _figure_to_dict(fig)
+    
+    elif template == 'plotly_dark':
+        fig = px.histogram(
+            df_level,
+            x="salario_base",
+            color="nivel",
+            nbins=25,
+            barmode="relative",
+            opacity=1,
+            labels={"nivel": "Nível"},
+            category_orders={"nivel": ["Estágio", "Júnior", "Pleno", "Sênior", "Especialista", "Líder / Coordenador", "Gerente"]},
+            color_discrete_sequence=dark_colors,
+        )
+        fig.update_layout(
+            title="Distribuição de Salários por Nível de Senioridade",
+            xaxis_title="Faixa salarial (R$)",
+            yaxis_title="Quantidade de Vagas",
+            template=template,
+            legend_title="Nível",
+        )
+        fig.update_traces(hovertemplate="Nível: %{legendgroup}<br>Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
+        return _figure_to_dict(fig)
+
 
 def build_boxplot_by_level(df: pd.DataFrame, template='plotly_white') -> Dict[str, Any]:
     df_box = df.dropna(subset=["salario_base", "nivel"])
@@ -304,7 +338,7 @@ def build_heatmap_state_level(df: pd.DataFrame, template='plotly_white') -> Dict
             z=pivot.values,
             x=pivot.columns,
             y=pivot.index,
-            colorscale="YlOrRd",
+            colorscale="Viridis",
             colorbar=dict(title="Salário Médio (R$)"),
             hovertemplate=(
                 "Estado: %{y}<br>Nível: %{x}<br>Salário médio: R$ %{z:,.0f}<extra></extra>"
@@ -315,7 +349,7 @@ def build_heatmap_state_level(df: pd.DataFrame, template='plotly_white') -> Dict
         title="Heatmap - Salário Médio por Estado e Nível",
         xaxis_title="Nível",
         yaxis_title="Estado",
-        template="plotly_white",
+        template=template,
     )
     return _figure_to_dict(fig)
 
@@ -436,6 +470,7 @@ def build_benefits_analysis(df: pd.DataFrame, benefit_list: List[str], template=
     )
     return _figure_to_dict(fig)
 
+# ...existing code...
 def build_interactive_map(df: pd.DataFrame, template = 'plotly_white') -> Dict[str, Any]:
     geojson = _get_brazil_geojson()
     grouped = df.groupby("estado", dropna=True).agg(
@@ -458,6 +493,15 @@ def build_interactive_map(df: pd.DataFrame, template = 'plotly_white') -> Dict[s
 
     fig = go.Figure()
 
+    # neon colorscale (de mais claro a mais intenso)
+    neon_colorscale = [
+        [0.0, "#e0f7ff"],
+        [0.2, "#00e5ff"],
+        [0.5, "#00b3ff"],
+        [0.8, "#0066ff"],
+        [1.0, "#6600ff"],
+    ]
+
     mask_pos = merged["num_vagas"] > 0
     if mask_pos.any():
         fig.add_trace(
@@ -466,14 +510,18 @@ def build_interactive_map(df: pd.DataFrame, template = 'plotly_white') -> Dict[s
                 locations=merged.loc[mask_pos, "estado"],
                 z=merged.loc[mask_pos, "num_vagas"],
                 featureidkey="properties.sigla",
-                colorscale="Blues",
-                marker_line_color="white",
-                marker_line_width=0.5,
-                colorbar=dict(title="Número de vagas"),
+                colorscale=neon_colorscale,
+                marker_line_color="#0ff",  # neon-like border
+                marker_line_width=0.8,
+                colorbar=dict(title="Número de vagas", outlinecolor="#00e5ff"),
                 customdata=merged.loc[mask_pos, ["estado_nome", "num_vagas", "media_salario_base", "media_remuneracao_total", "salario_min", "salario_max"]].values,
                 hovertemplate=(
-                    "Estado: %{customdata[0]}<br>Vagas: %{customdata[1]}<br>Salário médio: R$ %{customdata[2]:,.0f}<br>Remuneração média: R$ %{customdata[3]:,.0f}<extra></extra>"
+                    "<b style='color:#00e5ff'>Estado:</b> %{customdata[0]}<br>"
+                    "<b style='color:#00e5ff'>Vagas:</b> %{customdata[1]}<br>"
+                    "<b style='color:#00e5ff'>Salário médio:</b> R$ %{customdata[2]:,.0f}<br>"
+                    "<b style='color:#00e5ff'>Remuneração média:</b> R$ %{customdata[3]:,.0f}<extra></extra>"
                 ),
+                hoverlabel=dict(bgcolor="#001122", font_size=12, font_color="#00e5ff"),
             )
         )
     mask_zero = merged["num_vagas"] == 0
@@ -486,11 +534,12 @@ def build_interactive_map(df: pd.DataFrame, template = 'plotly_white') -> Dict[s
                 featureidkey="properties.sigla",
                 colorscale=[[0, "#f0f0f0"], [1, "#f0f0f0"]],
                 showscale=False,
-                marker_line_color="white",
+                marker_line_color="#cccccc",
                 marker_line_width=0.5,
                 hovertemplate=(
                     "Estado: %{location}<br>Vagas: 0<extra></extra>"
                 ),
+                hoverlabel=dict(bgcolor="#111111", font_size=11, font_color="#444444"),
             )
         )
 
@@ -499,9 +548,13 @@ def build_interactive_map(df: pd.DataFrame, template = 'plotly_white') -> Dict[s
         title="Distribuição de Vagas por Estado",
         template=template,
         margin=dict(l=0, r=0, t=40, b=0),
+        uirevision='fixed',
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
 
     return _figure_to_dict(fig)
+# ...existing code...
 
 def build_summary(df: pd.DataFrame) -> Dict[str, Any]:
     salarios = df["salario_base"].dropna()
@@ -522,80 +575,91 @@ def sample_table(df: pd.DataFrame, limit: int = 15) -> List[Dict[str, Any]]:
     sample = df[subset_cols].dropna(subset=["salario_base"]).head(limit)
     records: List[Dict[str, Any]] = []
     for row in sample.to_dict(orient="records"):
-        row["salario_base"] = int(row.get("salario_base", 0)) if row.get("salario_base") is not None else None
+        row["salario_base"] = float(row.get("salario_base", 0)) if row.get("salario_base") is not None else None
         if "remuneracao_total_mensal" in row:
             value = row.get("remuneracao_total_mensal")
-            row["remuneracao_total_mensal"] = int(value) if value is not None else None
+            row["remuneracao_total_mensal"] = float(value) if value is not None else None
         records.append(row)
     return records
 
-def load_dashboard_context(df, benefit_list, template='plotly_white') -> Dict[str, Any]:
+def load_dashboard_context(df, benefit_list) -> Dict[str, Any]:
     visualizations = [
-        {
-            "id": "chart-salary-histogram",
-            "title": "Distribuição Geral de Salários",
-            "description": "Entenda como os salários base estão distribuídos na amostra coletada.",
-            "figure": build_salary_histogram(df, template=template),
-        },
+        #{
+        #    "id": "chart-salary-histogram",
+        #    "title": "Distribuição Geral de Salários",
+        #    "description": "Entenda como os salários base estão distribuídos na amostra coletada.",
+        #    "figure_light": build_salary_histogram(df, template='plotly_white'),
+        #    "figure_dark": build_salary_histogram(df, template='plotly_dark'),
+        #},
         {
             "id": "chart-salary-level",
             "title": "Salários por Nível",
             "description": "Compare a distribuição salarial por nível de senioridade.",
-            "figure": build_salary_by_level(df, template=template),
+            "figure_light": build_salary_by_level(df, template='plotly_white'),
+            "figure_dark": build_salary_by_level(df, template='plotly_dark'),
         },
         {
             "id": "chart-boxplot-level",
             "title": "Boxplot por Nível",
             "description": "Visualize mediana, quartis e outliers por nível de carreira.",
-            "figure": build_boxplot_by_level(df, template=template),
+            "figure_light": build_boxplot_by_level(df, template='plotly_white'),
+            "figure_dark": build_boxplot_by_level(df, template='plotly_dark'),
         },
-        {
-            "id": "chart-violin-level",
-            "title": "Densidade Salarial por Nível",
-            "description": "Distribuição completa dos salários base por nível, com outliers destacados.",
-            "figure": build_violin_by_level(df, template=template),
-        },
+        #{
+        #    "id": "chart-violin-level",
+        #    "title": "Densidade Salarial por Nível",
+        #    "description": "Distribuição completa dos salários base por nível, com outliers destacados.",
+        #    "figure_light": build_violin_by_level(df, template='plotly_white'),
+        #    "figure_dark": build_violin_by_level(df, template='plotly_dark'),
+        #},
         {
             "id": "chart-states",
             "title": "Estados com Mais Vagas",
             "description": "Os 10 estados que concentram mais oportunidades na base.",
-            "figure": build_states_bar(df, template=template),
+            "figure_light": build_states_bar(df, template='plotly_white'),
+            "figure_dark": build_states_bar(df, template='plotly_dark'),
         },
         {
             "id": "chart-heatmap",
             "title": "Heatmap Estado x Nível",
             "description": "Salário médio por estado e nível de senioridade.",
-            "figure": build_heatmap_state_level(df, template=template),
+            "figure_light": build_heatmap_state_level(df, template='plotly_white'),
+            "figure_dark": build_heatmap_state_level(df, template='plotly_dark'),
         },
-        {
-            "id": "chart-salary-comparison",
-            "title": "Salário Base vs Remuneração Total",
-            "description": "Entenda o quanto a remuneração total se distancia do salário base.",
-            "figure": build_salary_comparison(df, template=template),
-        },
+        #{
+        #    "id": "chart-salary-comparison",
+        #    "title": "Salário Base vs Remuneração Total",
+        #    "description": "Entenda o quanto a remuneração total se distancia do salário base.",
+        #    "figure_light": build_salary_comparison(df, template='plotly_white'),
+        #    "figure_dark": build_salary_comparison(df, template='plotly_dark'),
+        #},
         {
             "id": "chart-work-modality",
             "title": "Modalidade de Trabalho",
             "description": "Distribuição de modalidades como presencial, híbrido ou remoto.",
-            "figure": build_work_modality(df, template=template),
+            "figure_light": build_work_modality(df, template='plotly_white'),
+            "figure_dark": build_work_modality(df, template='plotly_dark'),
         },
         {
             "id": "chart-career",
             "title": "Salário Médio por Cargo",
             "description": "Top 6 cargos mais frequentes e seus salários médios.",
-            "figure": build_career_analysis(df, template=template),
+            "figure_light": build_career_analysis(df, template='plotly_white'),
+            "figure_dark": build_career_analysis(df, template='plotly_dark'),
         },
         {
             "id": "chart-benefits",
             "title": "Benefícios Oferecidos",
             "description": "Os benefícios mais recorrentes nas vagas analisadas.",
-            "figure": build_benefits_analysis(df, benefit_list, template=template),
+            "figure_light": build_benefits_analysis(df, benefit_list, template='plotly_white'),
+            "figure_dark": build_benefits_analysis(df, benefit_list, template='plotly_dark'),
         },
         {
             "id": "chart-map",
             "title": "Mapa Interativo de Vagas",
             "description": "Explore a distribuição de vagas e salários médios por estado.",
-            "figure": build_interactive_map(df, template=template),
+            "figure_light": build_interactive_map(df, template='plotly_white'),
+            "figure_dark": build_interactive_map(df, template='plotly_dark'),
         },
     ]
 
@@ -606,10 +670,10 @@ def load_dashboard_context(df, benefit_list, template='plotly_white') -> Dict[st
     }
     return context
 
-def main(template='plotly_white'):
+def main():
     df = pd.read_csv('./../../data/raw_data.csv', decimal=',', thousands='.')
     df, benefits = transform_data(df)
-    context = load_dashboard_context(df, benefit_list=benefits, template=template)
+    context = load_dashboard_context(df, benefit_list=benefits)
     output_path = Path('./../static/images/dashboard_context.json')
     with open(output_path, 'w') as f:
         json.dump(context, f)

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Observatório de Empregos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dark-mode.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/front-style.css') }}">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg">
+      <div class="container">
+        <a class="navbar-brand" href="/">Observatório</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="/">Início</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/dashboard">Dashboard de Dados</a>
+            </li>
+          </ul>
+
+          <div class="d-flex align-items-center">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="darkModeSwitch">
+              <label class="form-check-label" for="darkModeSwitch">Dark Mode</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container mt-4">
+      {% block content %}
+      {% endblock %}
+    </main>
+
+    <footer class="site-footer mt-5 py-4">
+      <div class="container">
+        <div class="row gy-3 align-items-center">
+          <div class="col-md-6">
+            <h6 class="mb-2">Job Data Observatory</h6>
+            <p class="mb-0 small text-muted">
+              Observatório de dados sobre o mercado de trabalho em ciência de dados no Brasil.
+            </p>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <ul class="list-unstyled mb-0 small">
+              <li>Produzido por <strong>Richard Elias Soares Viana</strong></li>
+              <li>Email: <a href="mailto:erichardsv1234@gamil.com">erichardsv1234@gamil.com</a></li>
+              <li>GitHub: <a href="https://github.com/rick0110" target="_blank" rel="noopener">github.com/rick0110</a></li>
+              <li>Estudante de Matemática Aplicada com ênfase em Ciência de Dados — IMPA-tech</li>
+            </ul>
+          </div>
+        </div>
+        <hr class="my-3">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center small">
+          <span class="mb-2 mb-sm-0">&copy; 2025 · Observatório de dados</span>
+        </div>
+      </div>
+    </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/base-dark-mode.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

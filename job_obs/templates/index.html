@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-section">
+  <div class="container py-5">
+    <div class="row align-items-center">
+
+      <div class="col-lg-6">
+        <h1 class="display-3 fw-bold">
+          <span class="text-accent">Observatório de dados</span>
+        </h1>
+        <p class="lead my-4">
+          Aqui você encontra dashboards e analises continuas de dados acerca da evolução do mercado de dados.
+        </p>
+        <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+      </div>
+
+      <div class="col-lg-6 text-center">
+        <img src="{{ url_for('static', filename='images/capa.jpeg') }}" class="img-fluid rounded-4" alt="Foto do Desenvolvedor Web">
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

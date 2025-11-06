@@ -1,0 +1,72 @@
+.chart-wrapper { position: relative; }
+.chart-loader {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--card-bg, #ffffff);
+	border-radius: .5rem;
+	z-index: 2;
+}
+
+.spinner {
+	width: 36px;
+	height: 36px;
+	border: 3px solid rgba(0,0,0,0.15);
+	border-top-color: #0d6efd;
+	border-radius: 50%;
+	animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fade-in { opacity: 0; transform: translateY(4px); transition: opacity .25s ease, transform .25s ease; }
+.fade-in.ready { opacity: 1; transform: none; }
+
+.skeleton {
+	position: relative;
+	overflow: hidden;
+	background: linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.12), rgba(0,0,0,0.06));
+	background-size: 200% 100%;
+	animation: shimmer 1.2s ease-in-out infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.dark .chart-loader { background: var(--card-bg, #0f1724); }
+.dark .spinner { border-color: rgba(255,255,255,0.1); border-top-color: #9fb0c8; }
+
+.skeleton-line { height: 0.875rem; border-radius: 6px; margin-bottom: .5rem; }
+.skeleton-title { height: 1.5rem; border-radius: 8px; margin-bottom: .5rem; }
+.skeleton-circle { width: 40px; height: 40px; border-radius: 50%; }
+.skeleton-40 { width: 40%; }
+.skeleton-60 { width: 60%; }
+.skeleton-80 { width: 80%; }
+.skeleton-100 { width: 100%; }
+
+.dark .skeleton {
+	background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+}
+
+.hidden-until-ready { display: none !important; }
+
+.site-footer{
+	background-color: #f5f7fa; 
+  	color: #0f1724;           
+ 	border-top: 1px solid rgba(15,23,36,0.06);
+  	box-shadow: 0 -2px 8px rgba(15,23,36,0.02);
+}
+
+.site-footer a { color: inherit; text-decoration: underline; }
+
+html.dark .site-footer {
+  background-color: #081226;
+  color: #cfe8ff;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.4);
+}
+
+.site-footer hr { border-color: rgba(15,23,36,0.12); opacity: .5; }
+html.dark .site-footer hr { border-color: rgba(255,255,255,0.15); }
+
+

@@ -7,12 +7,19 @@
 
       <div class="col-lg-6">
         <h1 class="display-3 fw-bold">
-          <span class="text-accent">Observatório de dados</span>
+          <span class="text-accent">Um panorama geral sobre vagas em <span class="text-primary">Data Science</span> </span>
         </h1>
         <p class="lead my-4">
-          Aqui você encontra dashboards e analises continuas de dados acerca da evolução do mercado de dados.
+          Um observatório contínuo que utiliza que coleta, processa e analisa a evolução das vagas de dados no Brasil.
         </p>
-        <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+        <div class="d-flex gap-3">
+          <a href="/dashboard" class="btn btn-primary btn-lg px-4 rounded-pill shadow-sm">
+            Acessar Dashboard
+          </a>
+          <a href="#metodologia" class="btn btn-outline-secondary btn-lg px-4 rounded-pill">
+            Como funciona
+          </a>
+        </div>
       </div>
 
       <div class="col-lg-6 text-center">
@@ -22,4 +29,139 @@
     </div>
   </div>
 </div>
+
+<div id="metodologia" class="container py-5 my-5 border-top">
+  <div class="row align-items-center">
+    <div class="col-lg-5">
+      <h2 class="h1 fw-bold mb-4">Por trás dos dados</h2>
+      <p class="lead text-muted">
+        Este projeto não apenas lista vagas. Fazemos análises e apresentamos estatísticas e insights relevantes.
+      </p>
+      <p>
+        Utilizamos técnicas de coletas automatizada de dados, incluindo web scraping e fornecimento de dados por usuários.
+        Os dados coletados são processados e suas qualidades são verificadas usando modelos de <strong>Processamento de Linguagem Natural (NLP)</strong> baseados em arquitetura Transformer usando principalmente modelos disponíveis na huggingface.
+        Isso garante robustez e precisão nas análises realizadas.
+      </p>
+      
+    </div>
+    <div class="col-lg-6 offset-lg-1 mt-4 mt-lg-0">
+      <div class="row g-3">
+        <div class="col-6">
+          <div class="card border-0 shadow-sm h-100 bg-light">
+            <div class="card-body">
+              <h5 class="fw-bold">🛠️ Coleta</h5>
+              <p class="small text-muted mb-0">Dados são coletados por meio de formulario fornecido por usuários e Scrapers automatizados em Python varrem fontes públicas periodicamente, sempre seguindo todas as normas éticas impostas pelos regulamentos dos sites.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card border-0 shadow-sm h-100 bg-light">
+            <div class="card-body">
+              <h5 class="fw-bold">🧠 IA & NLP</h5>
+              <p class="small text-muted mb-0">Os dados coletados são processados de forma a garantir sua integridade e robustez das análises apresentadas.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card border-0 shadow-sm h-100 bg-light">
+            <div class="card-body">
+              <h5 class="fw-bold">📊 Análise</h5>
+              <p class="small text-muted mb-0">Principais estatísticas são apresentadas no dashboard e análises periódicas são feitas.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card border-0 shadow-sm h-100 bg-light">
+            <div class="card-body">
+              <h5 class="fw-bold">📈 Visualização</h5>
+              <p class="small text-muted mb-0">Dashboards interativos renderizados são apresentados em dashboards.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="Colaborativo" class="container py-5 my-5 border-top">
+  <div class="row align-items-center">
+    <div class="col-lg-5 offset-lg-0">
+      <div class="card shadow-lg border-0 rounded-4 overflow-hidden" style="background-color: #f8f9fa;">
+        <div class="card-header bg-white border-0 py-3 px-4">
+          <div class="d-flex gap-2">
+            <div class="rounded-circle bg-danger" style="width: 10px; height: 10px;"></div>
+            <div class="rounded-circle bg-warning" style="width: 10px; height: 10px;"></div>
+            <div class="rounded-circle bg-success" style="width: 10px; height: 10px;"></div>
+          </div>
+        </div>
+        <div class="card-body p-4 position-relative">
+          
+          <form id="demo-form" onsubmit="return false;">
+            <div class="mb-3">
+              <label class="form-label small text-muted fw-bold text-uppercase">Cargo</label>
+              <input type="text" class="form-control form-control-lg bg-white" id="anim-cargo" placeholder="" readonly>
+            </div>
+            
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label small text-muted fw-bold text-uppercase">Salário</label>
+                <input type="text" class="form-control bg-white" id="anim-salario" placeholder="" readonly>
+              </div>
+              <div class="col-6">
+                 <label class="form-label small text-muted fw-bold text-uppercase">Modalidade</label>
+                 <select class="form-select bg-white" id="anim-select">
+                   <option selected>Remoto</option>
+                 </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small text-muted fw-bold text-uppercase">Descrição Rápida</label>
+              <textarea class="form-control bg-white" id="anim-desc" rows="3" readonly></textarea>
+            </div>
+
+            <button id="anim-btn" class="btn btn-primary w-100 rounded-pill shadow-sm">
+              Enviar Vaga
+            </button>
+          </form>
+
+          <div id="anim-success" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex flex-column align-items-center justify-content-center text-center p-4 fade" style="opacity: 0; pointer-events: none; transition: opacity 0.5s;">
+            <div class="display-1 text-success mb-3">🎉</div>
+            <h4 class="fw-bold">Vaga Adicionada!</h4>
+            <p class="text-muted small">Obrigado por contribuir com a comunidade.</p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5 mb-4 mb-lg-10 offset-lg-1">
+      <span class="badge bg-success bg-opacity-10 text-success mb-3 px-3 py-2 rounded-pill fw-bold">
+        🤝 Colaborativo
+      </span>
+      <h2 class="display-5 fw-bold mb-4">A comunidade alimenta os dados.</h2>
+      <p class="lead text-muted mb-4">
+        Viu uma vaga interessante? Qualquer pessoa pode submeter dados ao observatório. Nossa IA valida e classifica a vaga automaticamente.
+      </p>
+      <ul class="list-unstyled mb-4">
+        <li class="mb-2">✅ <strong>Inteligente:</strong> Detecção automática de Senioridade.</li>
+        <li class="mb-2">✅ <strong>Open Source:</strong> Dados acessíveis para todos.</li>
+      </ul>
+      <a href="/vaga/nova" class="btn btn-outline-primary rounded-pill px-4">
+        Contribuir agora
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="container py-5 text-center">
+  <div class="bg-primary bg-opacity-10 rounded-5 p-5">
+    <h2 class="fw-bold mb-3">Pronto para explorar?</h2>
+    <p class="text-muted mb-4">Navegue pelas visualizações detalhadas ou use nossa busca semântica.</p>
+    <a href="/dashboard" class="btn btn-primary btn-lg rounded-pill px-5">Ir para o Dashboard</a>
+  </div>
+</div>
+
+<script src="./../static/js/form-animation.js"></script>
 {% endblock %}
+

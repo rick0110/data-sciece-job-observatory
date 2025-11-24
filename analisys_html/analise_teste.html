@@ -1,0 +1,494 @@
+---
+title: Análise de Salários SP
+author: Richard Viana
+date: 22/11/2025
+subject: Mercado de Trabalho em São Paulo
+summary: Análise completa com gráficos interativos sobre o mercado de trabalho em São Paulo.
+image_capa: analysis-hero.jpeg
+---
+
+<!doctype html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Análise de Salários SP - Observatório de Empregos</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/analisys_secondary_files/analise_teste/css/analysis-style.css">
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="scroll-progress" aria-hidden="true">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg portal-navbar sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-semibold" href="#visao-geral" data-scroll>Observatório de Empregos</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Alternar navegação">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
+                    <li class="nav-item"><a class="nav-link" href="#visao-geral" data-scroll>Visão Geral</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#indicadores" data-scroll>Indicadores</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#graficos" data-scroll>Gráficos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#tendencias" data-scroll>Tendências</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#conclusoes" data-scroll>Conclusões</a></li>
+                </ul>
+                <div class="d-flex align-items-center gap-3 mt-3 mt-lg-0">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="darkModeSwitch">
+                        <label class="form-check-label" for="darkModeSwitch" title="Alternar modo escuro">
+                            <i class="bi bi-moon-stars"></i>
+                        </label>
+                    </div>
+                    <a href="/analisys" class="btn btn-outline-primary btn-sm"><i class="bi bi-diagram-2 me-1"></i>Ver todas</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section id="visao-geral" class="hero-section py-5 position-relative" data-section>
+        <div class="hero-glow"></div>
+        <div class="hero-sparkles" aria-hidden="true"></div>
+        <div class="container position-relative">
+            <div class="row align-items-center gy-4">
+                <div class="col-lg-7">
+                    <div class="hero-pretitle text-uppercase text-muted">Relatório Especial &bull; Novembro 2025</div>
+                    <h1 class="display-4 fw-bold mb-3 hero-title">Análise do Mercado de Trabalho em São Paulo</h1>
+                    <p class="lead mb-4">Salários, modalidades e níveis profissionais decifrados com dados e histórias visuais para orientar decisões estratégicas em tecnologia.</p>
+                    <div class="d-flex flex-wrap gap-3 hero-badges">
+                        <span class="badge rounded-pill bg-gradient-primary"><i class="bi bi-person"></i> Richard Viana</span>
+                        <span class="badge rounded-pill bg-gradient-secondary"><i class="bi bi-calendar-event"></i> 22/11/2025</span>
+                        <span class="badge rounded-pill bg-gradient-info"><i class="bi bi-lightning-charge"></i> Mercado em Alta</span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <a href="#graficos" class="btn btn-primary btn-lg" data-scroll><i class="bi bi-bar-chart-line me-2"></i>Explorar gráficos</a>
+                        <a href="#indicadores" class="btn btn-outline-primary btn-lg" data-scroll><i class="bi bi-speedometer2 me-2"></i>Ver indicadores</a>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3 hero-metrics">
+                        <div class="col-12">
+                            <div class="floating-card card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted text-uppercase tracking-wide">Salário Médio</span>
+                                        <span class="badge badge-soft-success"><i class="bi bi-arrow-up-short"></i> +8% YoY</span>
+                                    </div>
+                                    <h3 class="display-6 mb-1">R$ 8.500</h3>
+                                    <p class="text-muted mb-3">Baseado em 1.234 vagas processadas no último trimestre.</p>
+                                    <div class="progress" role="progressbar" aria-label="Percentual de vagas remotas" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="progress-bar progress-gradient" style="width: 45%">45% Remotas</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="floating-card card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="icon-circle bg-primary-subtle text-primary mb-3"><i class="bi bi-graph-up"></i></div>
+                                    <h6 class="text-muted text-uppercase">Crescimento</h6>
+                                    <h4 class="mb-0">+23%</h4>
+                                    <small class="text-muted">Vagas em tecnologia</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="floating-card card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="icon-circle bg-info-subtle text-info mb-3"><i class="bi bi-award"></i></div>
+                                    <h6 class="text-muted text-uppercase">Nível mais disputado</h6>
+                                    <h4 class="mb-0">Pleno</h4>
+                                    <small class="text-muted">38% das oportunidades</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="container my-5">
+        <section id="indicadores" class="mb-5" data-section>
+            <div class="section-header d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+                <div>
+                    <h2 class="section-title">Indicadores de ritmo do mercado</h2>
+                    <p class="section-subtitle text-muted mb-0">KPIs atualizados que resumem a dinâmica das contratações em São Paulo.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge badge-soft-primary"><i class="bi bi-clock-history"></i> Atualizado há 7 dias</span>
+                    <span class="badge badge-soft-info"><i class="bi bi-cloud-arrow-down"></i> Fonte: job_data_observatory</span>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-6 col-md-3">
+                    <div class="stat-card card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people-fill stat-icon text-primary"></i>
+                            <h3 class="stat-value" data-target="1234" data-format="decimal">1.234</h3>
+                            <p class="stat-label text-muted">Vagas analisadas</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-currency-dollar stat-icon text-success"></i>
+                            <h3 class="stat-value" data-target="8500" data-format="currency-short">R$ 8.5k</h3>
+                            <p class="stat-label text-muted">Salário médio</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-briefcase-fill stat-icon text-warning"></i>
+                            <h3 class="stat-value" data-target="45" data-format="percent">45%</h3>
+                            <p class="stat-label text-muted">Vagas remotas</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-stars stat-icon text-danger"></i>
+                            <h3 class="stat-value" data-target="32" data-format="decimal">32</h3>
+                            <p class="stat-label text-muted">Benefícios mapeados</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="insights" class="mb-5" data-section>
+            <div class="section-header d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+                <div>
+                    <h2 class="section-title">Destaques acionáveis</h2>
+                    <p class="section-subtitle text-muted mb-0">Pontos essenciais prontos para apresentar a stakeholders.</p>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge badge-soft-success"><i class="bi bi-graph-up"></i> Crescimento acelerado</span>
+                    <span class="badge badge-soft-warning"><i class="bi bi-lightning"></i> Skills em alta</span>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="insight-card card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="icon-circle bg-primary text-white mb-3"><i class="bi bi-bezier"></i></div>
+                            <h5 class="card-title">Trilhas de carreira aceleradas</h5>
+                            <p class="card-text text-muted">Profissionais que combinam dados e engenharia recebem 27% mais propostas acima de R$ 12k.</p>
+                            <ul class="list-unstyled mb-0">
+                                <li><i class="bi bi-check2-circle text-primary me-2"></i>Full Stack + Analytics</li>
+                                <li><i class="bi bi-check2-circle text-primary me-2"></i>Cloud + DataOps</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="insight-card card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="icon-circle bg-success text-white mb-3"><i class="bi bi-geo"></i></div>
+                            <h5 class="card-title">Interior em expansão</h5>
+                            <p class="card-text text-muted">Campinas, São José dos Campos e Sorocaba avançam com clusters de tecnologia e salários competitivos.</p>
+                            <ul class="list-unstyled mb-0">
+                                <li><i class="bi bi-arrow-up-right text-success me-2"></i>Campinas: +19% vagas</li>
+                                <li><i class="bi bi-arrow-up-right text-success me-2"></i>SJC: +13% salários</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="insight-card card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="icon-circle bg-warning text-dark mb-3"><i class="bi bi-shield-check"></i></div>
+                            <h5 class="card-title">Benefícios decisivos</h5>
+                            <p class="card-text text-muted">Pacotes que combinam flexibilidade, bônus e educação representam 62% das propostas aceitas.</p>
+                            <ul class="list-unstyled mb-0">
+                                <li><i class="bi bi-star text-warning me-2"></i>Home office + ajuda setup</li>
+                                <li><i class="bi bi-star text-warning me-2"></i>Bônus anual atrelado a KPIs</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="graficos" class="mb-5" data-section>
+            <div class="section-header d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+                <div>
+                    <h2 class="section-title">Visão analítica 360º</h2>
+                    <p class="section-subtitle text-muted mb-0">Camadas complementares revelam comportamento salarial, demanda e benefícios.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge badge-soft-dark"><i class="bi bi-phone"></i> Responsivo</span>
+                    <span class="badge badge-soft-info"><i class="bi bi-magic"></i> Atualiza com o tema</span>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Distribuição de salários por nível profissional</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="grafico-salarios-nivel" class="chart-container"></div>
+                                <div class="alert alert-info mt-3" role="alert">
+                                    <i class="bi bi-info-circle"></i> Especialistas recebem em média 5x mais do que júniores no estado.
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-pie-chart-fill text-success me-2"></i>Modalidades de trabalho</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-7">
+                                        <div id="grafico-modalidades" class="chart-container"></div>
+                                    </div>
+                                    <div class="col-lg-5">
+                                        <div class="list-group">
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span><i class="bi bi-house-door text-purple"></i> Trabalho remoto</span>
+                                                <span class="badge bg-purple">45%</span>
+                                            </div>
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span><i class="bi bi-arrow-left-right text-teal"></i> Modelo híbrido</span>
+                                                <span class="badge bg-teal">35%</span>
+                                            </div>
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span><i class="bi bi-building text-dark"></i> Presencial</span>
+                                                <span class="badge bg-dark">20%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-graph-up text-warning me-2"></i>Evolução salarial por experiência</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="grafico-evolucao" class="chart-container"></div>
+                                <p class="text-muted mt-3 mb-0"><i class="bi bi-lightbulb"></i> Carreiras de dados aceleram após o 6º ano, com remuneração média acima de R$ 20k.</p>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-trophy-fill text-danger me-2"></i>Top 10 cargos mais demandados</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="grafico-cargos" class="chart-container"></div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-collection-play text-indigo me-2"></i>Salários médios por setor</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="grafico-setores" class="chart-container"></div>
+                                <p class="text-muted mt-3 mb-0">Tecnologia corporativa e serviços financeiros lideram remuneração sênior acima de R$ 19k.</p>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-activity text-success me-2"></i>Evolução trimestral de vagas por modelo</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="grafico-evolucao-modalidade" class="chart-container"></div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-gift text-purple me-2"></i>Benefícios mais valorizados</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="grafico-beneficios" class="chart-container"></div>
+                                <p class="text-muted mt-3 mb-0">Planos de bem-estar e bônus de performance aparecem em 4 de cada 5 ofertas competitivas.</p>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <article class="chart-section h-100">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h2 class="h4 mb-0"><i class="bi bi-box-fill text-primary me-2"></i>Distribuição salarial por área</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="grafico-box-salarios" class="chart-container"></div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="tendencias" class="mb-5" data-section>
+            <div class="section-header d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+                <div>
+                    <h2 class="section-title">Radar de tendências</h2>
+                    <p class="section-subtitle text-muted mb-0">Sinais emergentes que merecem acompanhamento em 2026.</p>
+                </div>
+                <span class="badge badge-soft-danger"><i class="bi bi-bullseye"></i> Foco estratégico</span>
+            </div>
+            <div class="row g-4 align-items-stretch">
+                <div class="col-lg-4">
+                    <div class="trend-card card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title d-flex align-items-center gap-2"><i class="bi bi-cpu text-primary"></i> IA aplicada ao negócio</h5>
+                            <p class="text-muted">Projetos que combinam IA com times de produto geram 2,4x mais vagas de liderança técnica.</p>
+                            <ul class="list-unstyled mb-0">
+                                <li><i class="bi bi-dot text-primary"></i>AI Product Manager</li>
+                                <li><i class="bi bi-dot text-primary"></i>MLOps Architect</li>
+                                <li><i class="bi bi-dot text-primary"></i>Data Governance Lead</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="trend-card card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title d-flex align-items-center gap-2"><i class="bi bi-shield-lock text-success"></i> Segurança by design</h5>
+                            <p class="text-muted">Empresas priorizam squads dedicados a cibersegurança com salários iniciais acima de R$ 17k.</p>
+                            <div class="timeline">
+                                <div class="timeline-item">
+                                    <span class="timeline-dot bg-success"></span>
+                                    <div>
+                                        <strong>Q1</strong>
+                                        <p class="mb-0 text-muted">Programas de Bug Bounty e Zero Trust.</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="timeline-dot bg-info"></span>
+                                    <div>
+                                        <strong>Q2</strong>
+                                        <p class="mb-0 text-muted">Contratações para monitoração 24/7.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="trend-card card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title d-flex align-items-center gap-2"><i class="bi bi-globe text-warning"></i> Talentos distribuídos</h5>
+                            <p class="text-muted">80% das scale-ups paulistas já contratam especialistas morando fora do estado com trilhas de onboarding remoto.</p>
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <span class="trend-pill">Onboarding 100% digital</span>
+                                <span class="trend-pill">Bolsa home office</span>
+                                <span class="trend-pill">Squads globais</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta-section mb-5" data-section>
+            <div class="card border-0 shadow-sm overflow-hidden">
+                <div class="row g-0 align-items-center">
+                    <div class="col-lg-8">
+                        <div class="card-body p-4 p-lg-5">
+                            <h3 class="mb-3">Precisa apresentar estes insights?</h3>
+                            <p class="text-muted mb-4">Baixe o resumo executivo com gráficos prontos para slides e apoio à tomada de decisão.</p>
+                            <div class="d-flex flex-wrap gap-3">
+                                <a href="/analisys_secondary_files/analise_teste/analise_salarios_sp.pdf" class="btn btn-primary"><i class="bi bi-download me-2"></i>Baixar PDF</a>
+                                <a href="/analisys" class="btn btn-outline-primary"><i class="bi bi-grid"></i>Explorar outras análises</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 d-none d-lg-block">
+                        <div class="cta-illustration h-100"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="conclusoes" class="conclusions-section" data-section>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-lg-5">
+                    <h2 class="h3 mb-4"><i class="bi bi-check-circle-fill text-success me-2"></i>Conclusões</h2>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="conclusion-item">
+                                <h5><i class="bi bi-arrow-up-right text-success"></i> Crescimento salarial</h5>
+                                <p class="text-muted mb-0">Profissionais sêniores podem ganhar até 5x mais que júniores, reforçando a valorização da experiência em tecnologia.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="conclusion-item">
+                                <h5><i class="bi bi-house-heart text-primary"></i> Modalidade predominante</h5>
+                                <p class="text-muted mb-0">O trabalho remoto lidera com 45% das vagas, mantendo o modelo híbrido em crescimento sustentado.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="conclusion-item">
+                                <h5><i class="bi bi-fire text-danger"></i> Alta demanda</h5>
+                                <p class="text-muted mb-0">Desenvolvedores Full Stack seguem como os mais procurados, com 150 vagas abertas no período analisado.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="conclusion-item">
+                                <h5><i class="bi bi-graph-up-arrow text-warning"></i> Tendência</h5>
+                                <p class="text-muted mb-0">Mercado aquecido para profissionais de tecnologia e dados, com crescimento de 23% em relação ao ano anterior.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="text-center mt-5 text-muted">
+            <hr>
+            <p><i class="bi bi-info-circle"></i> Dados ilustrativos gerados para demonstração. Análise atualizada em 22/11/2025.</p>
+            <p><a href="/analisys" class="btn btn-outline-primary"><i class="bi bi-arrow-left"></i> Voltar para análises</a></p>
+        </div>
+    </main>
+
+    <button id="backToTop" class="back-to-top" type="button" aria-label="Voltar ao topo">
+        <i class="bi bi-arrow-up"></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/analisys_secondary_files/analise_teste/js/charts-config.js"></script>
+    <script src="/analisys_secondary_files/analise_teste/js/animations.js"></script>
+</body>
+</html>

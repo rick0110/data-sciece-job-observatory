@@ -1,0 +1,10 @@
+.typing-active {
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+  background-color: #fff !important;
+}
+
+/* Efeito de clique no botão */
+.btn.active {
+  transform: scale(0.98);
+}

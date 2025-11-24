@@ -7,3 +7,5 @@ scikit-learn>=1.3
 sentence-transformers>=2.6
 sentence-transformers>=2.5.1
 scikit-learn>=1.4.2
+python-frontmatter
+markdown

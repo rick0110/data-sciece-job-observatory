@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="analysis-container">
+    {% if metadata %}
+    <div class="analysis-header mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="display-5 fw-bold mb-3">{{ metadata.titulo or 'Análise' }}</h1>
+                        <p class="lead text-muted">{{ metadata.resumo or '' }}</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="analysis-meta">
+                            {% if metadata.author %}
+                            <p class="mb-2">
+                                <i class="bi bi-person-fill"></i> 
+                                <strong>Autor:</strong> {{ metadata.author }}
+                            </p>
+                            {% endif %}
+                            {% if metadata.date %}
+                            <p class="mb-2">
+                                <i class="bi bi-calendar-event"></i> 
+                                <strong>Data:</strong> {{ metadata.date }}
+                            </p>
+                            {% endif %}
+                            {% if metadata.tags %}
+                            <p class="mb-0">
+                                <i class="bi bi-tags"></i>
+                                {% for tag in metadata.tags %}
+                                <span class="badge bg-primary">{{ tag }}</span>
+                                {% endfor %}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="analysis-content">
+        {{ content | safe }}
+    </div>
+
+    <div class="analysis-footer mt-5 mb-4">
+        <div class="text-center">
+            <hr class="mb-4">
+            <a href="/analisys_html" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Voltar para Análises
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Styles for Analysis Page -->
+<style>
+.analysis-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.analysis-header .card {
+    border-radius: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.analysis-meta {
+    font-size: 0.95rem;
+}
+
+.analysis-meta i {
+    color: #0d6efd;
+}
+
+.analysis-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* Estilos para o conteúdo da análise */
+.analysis-content h1,
+.analysis-content h2,
+.analysis-content h3 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.analysis-content h1 {
+    font-size: 2rem;
+    border-bottom: 2px solid #0d6efd;
+    padding-bottom: 0.5rem;
+}
+
+.analysis-content h2 {
+    font-size: 1.5rem;
+    color: #0d6efd;
+}
+
+.analysis-content h3 {
+    font-size: 1.25rem;
+}
+
+.analysis-content p {
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+.analysis-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.analysis-content table {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: collapse;
+}
+
+.analysis-content table th,
+.analysis-content table td {
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    text-align: left;
+}
+
+.analysis-content table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.analysis-content code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.analysis-content pre {
+    background-color: #282c34;
+    color: #abb2bf;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+}
+
+.analysis-content pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+}
+
+.analysis-content blockquote {
+    border-left: 4px solid #0d6efd;
+    padding-left: 1rem;
+    margin: 1.5rem 0;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.analysis-content ul,
+.analysis-content ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+
+.analysis-content li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+/* Estilos para gráficos Plotly (se houver) */
+.analysis-content .plotly-graph-div {
+    margin: 2rem 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .analysis-content {
+        padding: 1rem;
+    }
+    
+    .analysis-content h1 {
+        font-size: 1.5rem;
+    }
+    
+    .analysis-content h2 {
+        font-size: 1.25rem;
+    }
+}
+
+/* Dark mode support */
+[data-bs-theme="dark"] .analysis-content {
+    background: #212529;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .analysis-content h1,
+[data-bs-theme="dark"] .analysis-content h2,
+[data-bs-theme="dark"] .analysis-content h3 {
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .analysis-content h1 {
+    border-bottom-color: #0d6efd;
+}
+
+[data-bs-theme="dark"] .analysis-content code {
+    background-color: #343a40;
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .analysis-content table th {
+    background-color: #343a40;
+}
+
+[data-bs-theme="dark"] .analysis-content table th,
+[data-bs-theme="dark"] .analysis-content table td {
+    border-color: #495057;
+}
+</style>
+
+{% endblock %}

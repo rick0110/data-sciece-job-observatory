@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-5">
+          <h2 class="fw-bold mb-4">Publicar Nova Vaga</h2>
+          <p class="text-muted mb-4">Preencha os dados abaixo para adicionar uma vaga ao observatório. A vaga será indexada automaticamente pela nossa IA.</p>
+          
+          <form action="/vaga/nova" method="POST">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="cargo" class="form-label">Cargo</label>
+                <input type="text" class="form-control" id="cargo" name="cargo" required placeholder="Ex: Data Scientist">
+              </div>
+              
+              <div class="col-md-6">
+                <label for="nivel" class="form-label">Nível</label>
+                <select class="form-select" id="nivel" name="nivel">
+                  <option value="Júnior">Júnior</option>
+                  <option value="Pleno">Pleno</option>
+                  <option value="Sênior">Sênior</option>
+                  <option value="Estágio">Estágio</option>
+                  <option value="Gestão">Gestão</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label for="estado" class="form-label">Estado (UF)</label>
+                <input type="text" class="form-control" id="estado" name="estado" placeholder="Ex: SP" maxlength="2">
+              </div>
+
+              <div class="col-md-6">
+                <label for="modalidade" class="form-label">Modalidade</label>
+                <select class="form-select" id="modalidade" name="modalidade">
+                  <option value="Remoto">Remoto</option>
+                  <option value="Híbrido">Híbrido</option>
+                  <option value="Presencial">Presencial</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label for="salario" class="form-label">Salário Base (R$)</label>
+                <input type="number" step="0.01" class="form-control" id="salario" name="salario" placeholder="Ex: 5000.00">
+              </div>
+
+              <div class="col-12">
+                <label for="descricao" class="form-label">Descrição da Vaga / Requisitos</label>
+                <textarea class="form-control" id="descricao" name="descricao" rows="5" required placeholder="Cole aqui a descrição completa da vaga. Nossa IA usará este texto para a busca."></textarea>
+              </div>
+
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill">Publicar Vaga</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

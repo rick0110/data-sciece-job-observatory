@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+  
+  <div class="row align-items-end mb-5">
+    <div class="col-lg-8">
+      <h2 class="fw-bold display-6">Análises Publicadas</h2>
+      <p class="text-muted">Explorando o mercado de dados através de estatística e código.</p>
+    </div>
+  </div>
+
+
+  <div class="row g-4">
+    {% for post in dict_analysis.values() %}
+    <div class="col-md-4">
+      <a href="/analisys_html/{{ post.file_path }}" class="text-decoration-none">
+        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden card-hover">
+            <div class="card-img-top-wrapper">
+            {% if post.image_capa_path %}
+              <img src="{{ post.image_capa_path }}" class="w-100 h-100 object-fit-cover" alt="{{ post.titulo }}">
+            {% else %}
+              <div class="placeholder-capa gradient-bg-{{ loop.index0 % 4 }} d-flex align-items-center justify-content-center p-4 text-center">
+                <div>
+                  <span class="badge bg-white bg-opacity-25 border border-white border-opacity-50 mb-2 backdrop-blur">
+                    {{ post.tags[0] if post.tags else 'Data Science' }}
+                  </span>
+                  <h5 class="text-white fw-bold text-shadow mb-0">{{ post.title }}</h5>
+                </div>
+              </div>
+            {% endif %}
+        </div> 
+        
+        <div class="card-body p-4 d-flex flex-column">
+            {% if post.title %}
+              <h5 class="card-title fw-bold text-dark mb-3">{{ post.title }}</h5>
+            {% endif %}
+            <p class="card-text text-muted small mb-4 flex-grow-1 line-clamp-3">
+              {{ post.summary or "Clique para ler a análise completa..." }}
+            </p>
+
+            <div class="d-flex align-items-center justify-content-between pt-3 border-top border-light">
+              <div class="d-flex align-items-center">
+                <div class="avatar-circle me-2 bg-light text-primary fw-bold small d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 50%;">
+                  {{ post.author[0] | upper if post.author else 'A' }}
+                </div>
+                <div class="small text-muted lh-1">
+                  <span class="d-block text-dark fw-semibold">{{ post.author or 'Anônimo' }}</span>
+                  <span style="font-size: 0.75rem;">{{ post.date or 'Recente' }}</span>
+                </div>
+              </div>
+              <span class="text-primary small fw-bold">Ler <i class="bi bi-arrow-right"></i></span>
+            </div>
+        </div>
+
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

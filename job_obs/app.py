@@ -60,7 +60,7 @@ def api_search():
         subset = df.iloc[indices].copy()
         columns = [
             'cargo', 'nivel', 'estado', 'modalidade_trabalho',
-            'salario_base', 'remuneracao_total_mensal'
+            'salario_base'
         ]
         cols = [c for c in columns if c in subset.columns]
         records = []
@@ -70,8 +70,7 @@ def api_search():
                 'nivel': row.get('nivel'),
                 'estado': row.get('estado'),
                 'modalidade_trabalho': row.get('modalidade_trabalho'),
-                'salario_base': float(row['salario_base']) if pd.notna(row.get('salario_base')) else None,
-                'remuneracao_total_mensal': float(row['remuneracao_total_mensal']) if 'remuneracao_total_mensal' in subset.columns and pd.notna(row.get('remuneracao_total_mensal')) else None,
+                'salario_base': float(row['salario_base']) if pd.notna(row.get('salario_base')) else None
             }
             records.append(rec)
         return jsonify({"results": records})
@@ -89,7 +88,7 @@ def nova_vaga():
         estado = request.form.get('estado')
         modalidade = request.form.get('modalidade')
         salario = request.form.get('salario')
-        descricao = request.form.get('descricao') or ""
+        beneficios = request.form.get('beneficios') or ""
         
         try:
             salario_float = float(salario) if salario else None
@@ -102,8 +101,7 @@ def nova_vaga():
             'estado': estado,
             'modalidade_trabalho': modalidade,
             'salario_base': salario_float,
-            'remuneracao_total_mensal': salario_float, 
-            'descricao': descricao 
+            'beneficios': beneficios 
         }
 
         global df, embeddings
@@ -111,7 +109,7 @@ def nova_vaga():
         nova_linha_df = pd.DataFrame([nova_linha])
         df = pd.concat([df, nova_linha_df], ignore_index=True)
 
-        texto_para_embedding = f"{cargo} {descricao}"
+        texto_para_embedding = f"{cargo} {beneficios}"
         novo_embedding = model.encode([texto_para_embedding])
         
         embeddings = np.vstack([embeddings, novo_embedding])

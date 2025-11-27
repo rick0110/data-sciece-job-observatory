@@ -29,6 +29,7 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
 
     processed_indices = set()
     consecutive_errors = 0
+    last_card_count = 0
 
     i = 0
     try:
@@ -37,12 +38,25 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
             cards = driver.find_elements(By.CSS_SELECTOR, ".jobCard")
             
             # Se já processamos todos os cards visíveis e não carregou mais nada após tentativas, paramos
-            if len(cards) == len(processed_indices):
-                if consecutive_errors > 3:
-                    print("Fim da lista ou não foi possível carregar mais itens.")
-                    break
+            if i >= len(cards):
+                # Tenta carregar mais cards rolando a página
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(2)
+                cards = driver.find_elements(By.CSS_SELECTOR, ".jobCard")
                 
-            card = driver.find_elements(By.CSS_SELECTOR, ".jobCard")[i]
+                if len(cards) == last_card_count:
+                    consecutive_errors += 1
+                    if consecutive_errors > 3:
+                        print("Fim da lista ou não foi possível carregar mais itens.")
+                        break
+                else:
+                    # Novos cards foram carregados, resetar contador de erros
+                    consecutive_errors = 0
+                    last_card_count = len(cards)
+                continue
+            
+            last_card_count = len(cards)
+            card = cards[i]
 
             link_el = card.find_element(By.CSS_SELECTOR, "a.JobCard_trackingLink__HMyun")
 
@@ -62,6 +76,7 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
                 salary_text = salary_el.text
                 df_dict['salario_base'].append(salary_text)
             except: 
+                processed_indices.add(i)
                 i += 1 
                 continue
             
@@ -95,6 +110,7 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
 
             df_dict['link'].append(href)
 
+            processed_indices.add(i)
             time.sleep(2)
             i += 1
     except:

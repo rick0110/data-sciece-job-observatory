@@ -4,7 +4,6 @@
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import time
-from selenium.webdriver.chrome.service import Service
 import undetected_chromedriver as uc
 import pandas as pd
 

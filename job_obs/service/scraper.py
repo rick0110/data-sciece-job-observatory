@@ -29,22 +29,25 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
 
     processed_indices = set()
     consecutive_errors = 0
-    last_card_count = 0
 
     i = 0
     try:
         while True:
             # Re-encontra os cards a cada loop para pegar os novos carregados
             cards = driver.find_elements(By.CSS_SELECTOR, ".jobCard")
+            current_card_count = len(cards)
             
             # Se já processamos todos os cards visíveis e não carregou mais nada após tentativas, paramos
-            if i >= len(cards):
+            if i >= current_card_count:
+                # Guarda a contagem antes de tentar carregar mais
+                count_before_scroll = current_card_count
+                
                 # Tenta carregar mais cards rolando a página
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(2)
                 cards = driver.find_elements(By.CSS_SELECTOR, ".jobCard")
                 
-                if len(cards) == last_card_count:
+                if len(cards) == count_before_scroll:
                     consecutive_errors += 1
                     if consecutive_errors > 3:
                         print("Fim da lista ou não foi possível carregar mais itens.")
@@ -52,10 +55,8 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
                 else:
                     # Novos cards foram carregados, resetar contador de erros
                     consecutive_errors = 0
-                    last_card_count = len(cards)
                 continue
             
-            last_card_count = len(cards)
             card = cards[i]
 
             link_el = card.find_element(By.CSS_SELECTOR, "a.JobCard_trackingLink__HMyun")

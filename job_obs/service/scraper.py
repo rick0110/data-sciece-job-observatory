@@ -27,7 +27,6 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
 
     time.sleep(4)
 
-    processed_indices = set()
     consecutive_errors = 0
 
     i = 0
@@ -37,12 +36,18 @@ def fetch_jobs(output_file="data_scraped.csv", url=None):
             cards = driver.find_elements(By.CSS_SELECTOR, ".jobCard")
             
             # Se já processamos todos os cards visíveis e não carregou mais nada após tentativas, paramos
-            if len(cards) == len(processed_indices):
+            if i >= len(cards):
+                consecutive_errors += 1
                 if consecutive_errors > 3:
                     print("Fim da lista ou não foi possível carregar mais itens.")
                     break
-                
-            card = driver.find_elements(By.CSS_SELECTOR, ".jobCard")[i]
+                time.sleep(2)
+                continue
+            
+            # Reset consecutive errors when new cards are found
+            consecutive_errors = 0
+            
+            card = cards[i]
 
             link_el = card.find_element(By.CSS_SELECTOR, "a.JobCard_trackingLink__HMyun")
 

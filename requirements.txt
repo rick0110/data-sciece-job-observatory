@@ -9,3 +9,7 @@ sentence-transformers>=2.5.1
 scikit-learn>=1.4.2
 python-frontmatter
 markdown
+selenium>=4.11.2
+webdriver-manager
+beautifulsoup4>=4.12.2
+transformers

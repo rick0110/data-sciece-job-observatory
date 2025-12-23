@@ -11,10 +11,21 @@
   <div class="col-md-3">
     <div class="card shadow-sm border-5 h-100 rounded-5">
       <div class="card-body rounded-5">
-        <h6 class="text-uppercase text-muted">Registros analisados</h6>
+        <h6 class="text-uppercase text-muted">Registros totais</h6>
           <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
           <h3 class="mb-0 hidden-until-ready">
             <span class="count-up" data-value="{{ summary.total_registros }}">{{ summary.total_registros }}</span>
+          </h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm border-5 h-100 rounded-5">
+      <div class="card-body rounded-5">
+        <h6 class="text-uppercase text-muted">Com salário informado</h6>
+          <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
+          <h3 class="mb-0 hidden-until-ready">
+            <span class="count-up" data-value="{{ summary.registros_com_salario }}">{{ summary.registros_com_salario }}</span>
           </h3>
       </div>
     </div>
@@ -37,17 +48,6 @@
           <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
           <h3 class="mb-0 hidden-until-ready">
             <span class="count-up currency" data-value="{{ summary.mediana_salario }}">{{ summary.mediana_salario | currency }}</span>
-          </h3>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card shadow-sm border-5 h-100 rounded-5">
-      <div class="card-body rounded-5">
-        <h6 class="text-uppercase text-muted">Remuneração total média</h6>
-          <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
-          <h3 class="mb-0 hidden-until-ready">
-           <span class="count-up currency" data-value="{{ summary.media_remuneracao_total }}">{{ summary.media_remuneracao_total | currency }}</span>
           </h3>
       </div>
     </div>

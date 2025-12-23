@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import pandas as pd
-from dashboard_data import transform_data, load_data
+from .dashboard_data import transform_data, load_data
 import numpy as np
 
 model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")

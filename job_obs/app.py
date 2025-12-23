@@ -11,15 +11,51 @@ import frontmatter
 import markdown
 
 # ========================
-# Load data and model for search
+# Mapeamentos de display para colunas unificadas
 # ========================
-df = pd.read_csv('./../data/vagas_processadas.csv')
-embeddings = np.load('./../data/embeddings.npy')
+SENIORITY_DISPLAY_LABELS = {
+    "estagio": "Estágio",
+    "junior": "Júnior",
+    "pleno": "Pleno",
+    "senior": "Sênior",
+    "staff": "Staff",
+    "lead": "Líder / Coordenador",
+    "manager": "Gerente",
+    "not_specified": "Não informado",
+}
+
+WORK_MODEL_DISPLAY_LABELS = {
+    "remote": "Remoto",
+    "hybrid": "Híbrido",
+    "on-site": "Presencial",
+    "not_specified": "Não informado",
+}
+
+# ========================
+# Load data and model for search
+# Paths resolve the project root so modules can be run with `python -m` from repo root
+# ========================
+from pathlib import Path
+
+def get_project_root() -> Path:
+    p = Path(__file__).resolve()
+    for parent in p.parents:
+        if (parent / 'data').exists():
+            return parent
+    return Path.cwd()
+
+PROJECT_ROOT = get_project_root()
+DATA_DIR = PROJECT_ROOT / 'data'
+STATIC_DIR = PROJECT_ROOT / 'job_obs' / 'static'
+
+# Carregar dados unificados (vagas_unificadas.csv gerado pelo merge_data_sources.py)
+df = pd.read_csv(DATA_DIR / 'vagas_unificadas.csv')
+embeddings = np.load(DATA_DIR / 'embeddings.npy')
 
 model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
 
 global context
-context = json.load(open('./static/images/dashboard_context.json'))
+context = json.load(open(STATIC_DIR / 'images' / 'dashboard_context.json'))
 app = Flask(__name__)
 
 # =========================
@@ -43,6 +79,7 @@ def dashboard():
 
 @app.route('/api/search')
 def api_search():
+    """Vector search API using embeddings."""
     q = (request.args.get('q') or '').strip()
     try:
         k = int(request.args.get('k', 20))
@@ -58,20 +95,24 @@ def api_search():
         scores = cosine_similarity(query_emb, embeddings)[0]
         indices = np.argsort(scores)[::-1][:k]
         subset = df.iloc[indices].copy()
-        columns = [
-            'cargo', 'nivel', 'estado', 'modalidade_trabalho',
-            'salario_base', 'remuneracao_total_mensal'
-        ]
-        cols = [c for c in columns if c in subset.columns]
+        
+        # Colunas unificadas
+        unified_columns = ['role', 'seniority', 'region', 'work_model', 'salary', 'total_monthly_compensation']
+        cols = [c for c in unified_columns if c in subset.columns]
+        
         records = []
         for i, row in subset[cols].iterrows():
+            # Mapear seniority e work_model para labels de display
+            seniority_display = SENIORITY_DISPLAY_LABELS.get(row.get('seniority'), row.get('seniority'))
+            work_model_display = WORK_MODEL_DISPLAY_LABELS.get(row.get('work_model'), row.get('work_model'))
+            
             rec = {
-                'cargo': row.get('cargo'),
-                'nivel': row.get('nivel'),
-                'estado': row.get('estado'),
-                'modalidade_trabalho': row.get('modalidade_trabalho'),
-                'salario_base': float(row['salario_base']) if pd.notna(row.get('salario_base')) else None,
-                'remuneracao_total_mensal': float(row['remuneracao_total_mensal']) if 'remuneracao_total_mensal' in subset.columns and pd.notna(row.get('remuneracao_total_mensal')) else None,
+                'cargo': row.get('role'),
+                'nivel': seniority_display,
+                'estado': row.get('region'),
+                'modalidade_trabalho': work_model_display,
+                'salario_base': float(row['salary']) if pd.notna(row.get('salary')) else None,
+                'remuneracao_total_mensal': float(row['total_monthly_compensation']) if 'total_monthly_compensation' in subset.columns and pd.notna(row.get('total_monthly_compensation')) else None,
             }
             records.append(rec)
         return jsonify({"results": records})
@@ -83,7 +124,9 @@ def api_search():
 # ==============================
 @app.route('/vaga/nova', methods=['GET', 'POST'])
 def nova_vaga():
+    """Page for publishing a new job posting."""
     if request.method == 'POST':
+        empresa = request.form.get('empresa')
         cargo = request.form.get('cargo')
         nivel = request.form.get('nivel')
         estado = request.form.get('estado')
@@ -97,28 +140,21 @@ def nova_vaga():
             salario_float = None
 
         nova_linha = {
-            'cargo': cargo,
-            'nivel': nivel,
-            'estado': estado,
-            'modalidade_trabalho': modalidade,
-            'salario_base': salario_float,
-            'remuneracao_total_mensal': salario_float, 
-            'descricao': descricao 
+            'company': empresa,
+            'role': cargo,
+            'seniority': nivel,
+            'region': estado,
+            'work_model': modalidade,
+            'salary': salario_float,
+            'raw_html_description': descricao,
+            'source': 'manual',
         }
-
-        global df, embeddings
         
-        nova_linha_df = pd.DataFrame([nova_linha])
-        df = pd.concat([df, nova_linha_df], ignore_index=True)
-
-        texto_para_embedding = f"{cargo} {descricao}"
-        novo_embedding = model.encode([texto_para_embedding])
+        (DATA_DIR / 'vagas_added_BY_users.json').parent.mkdir(parents=True, exist_ok=True)
+        with open(DATA_DIR / 'vagas_added_BY_users.json', 'a', encoding='utf-8') as f:
+            f.write(json.dumps(nova_linha, ensure_ascii=False) + ',' + '\n')
         
-        embeddings = np.vstack([embeddings, novo_embedding])
-
-        nova_linha_df.to_csv('./../data/vagas_processadas.csv', mode='a', header=False, index=False)
         
-        np.save('./../data/embeddings.npy', embeddings)
 
         return render_template('success-new_vag.html', mensagem="Vaga publicada e indexada com sucesso!")
 

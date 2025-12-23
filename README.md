@@ -1,1506 +1,595 @@
-<div align="center">
 
-# Data Jobs Observatory
+# Job Data Observatory (Data Science job market)
 
-Explore Brazil's data job market with interactive dashboards and continuously published analyses about opportunities in Data Science and related roles.
+This repository contains a complete (local-first) workflow to:
 
-</div>
+1) collect raw job postings (CSV + LinkedIn scraping output),
+2) normalize all sources into a single unified dataset,
+3) generate sentence embeddings for semantic search,
+4) precompute Plotly dashboards into a JSON “context” file,
+5) serve everything via a Flask web app (dashboard + semantic search + analysis gallery + manual job submission).
 
-## Overview
+Everything documented here is derived from the current source code in this repo. No “placeholder features” are described.
 
-This project is a comprehensive, end-to-end observatory for the Brazilian data job market. It consists of three main components:
+## Table of contents
 
-1. **Interactive Dashboard**: A Flask web application serving real-time interactive Plotly charts with light/dark theme support
-2. **Semantic Search Engine**: AI-powered job search using multilingual sentence embeddings
-3. **Analysis Publication Platform**: A system for publishing and sharing detailed market analyses with rich visualizations
+- Quick start (end-to-end)
+- What gets generated (artifacts)
+- Architecture (how components connect)
+- Data model (unified columns)
+- Data ingestion
+  - Source A: `data/raw_data.csv`
+  - Source B: LinkedIn scraper → `data/linkedin_data_raw.json`
+- Data unification pipeline (`merge_data_sources.py`)
+- NLP extraction pipeline (regex + optional LLM fallback)
+- Embeddings generation (`generate_embeddings.py`)
+- Dashboard generation (`job_obs/service/dashboard_data.py`)
+- Flask application (`job_obs/app.py`)
+  - Routes
+  - Semantic search API (`/api/search`)
+  - Manual job submission (`/vaga/nova`)
+  - Analysis publishing (`/analisys_html`)
+- Troubleshooting
+- Notes for contributors
 
-The platform combines data engineering, machine learning, and web development to provide actionable insights into Brazil's data science job market.
+## Quick start (end-to-end, local)
 
----
+### 0) Prerequisites
 
-## Table of Contents
+- Python 3.10+ (this workspace includes a `job_obs_env/` virtualenv already - only on gitlab)
+- Enough RAM to load embeddings into memory (the current `data/embeddings.npy` is tens of MB - currently ~ 4.00 GB RAM)
+- Internet access is required by some steps:
+  - downloading HuggingFace models (SentenceTransformers, and optionally Flan-T5)
+  - downloading Brazil states GeoJSON for the dashboard map
 
-- [Architecture Overview](#architecture-overview)
-- [Detailed Component Breakdown](#detailed-component-breakdown)
-  - [1. Data Pipeline & Processing](#1-data-pipeline--processing)
-  - [2. Web Application (Flask)](#2-web-application-flask)
-  - [3. Semantic Search Engine](#3-semantic-search-engine)
-  - [4. Dashboard System](#4-dashboard-system)
-  - [5. Analysis Publishing Platform](#5-analysis-publishing-platform)
-- [Technology Stack](#technology-stack)
-- [Getting Started](#getting-started)
-- [API Documentation](#api-documentation)
-- [Contributing Analyses](#contributing-analyses)
-- [Project Structure](#project-structure)
+### 1) Create / activate a virtual environment
 
----
+If you are using the already included venv, just activate it:
 
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Interface                          │
-│  (Flask + Jinja2 Templates + Bootstrap + Dark Mode Support)    │
-└────────────┬────────────────────────────────────┬───────────────┘
-             │                                    │
-    ┌────────▼────────┐                  ┌───────▼────────┐
-    │   Dashboard     │                  │   Analyses     │
-    │   (Plotly.js)   │                  │  (HTML/CSS/JS) │
-    └────────┬────────┘                  └───────┬────────┘
-             │                                    │
-    ┌────────▼────────────────────────────────────▼────────┐
-    │              Flask Backend (app.py)                  │
-    │  Routes | Templates | Static Assets | API Endpoints │
-    └────────┬────────────────────────────────┬────────────┘
-             │                                │
-    ┌────────▼────────┐              ┌───────▼─────────┐
-    │  Data Pipeline  │              │  Search Engine  │
-    │  (dashboard_    │              │  (Sentence      │
-    │   data.py)      │              │   Transformers) │
-    └────────┬────────┘              └───────┬─────────┘
-             │                                │
-    ┌────────▼────────────────────────────────▼─────────┐
-    │              Data Layer                           │
-    │  raw_data.csv | vagas_processadas.csv            │
-    │  embeddings.npy | dashboard_context.json         │
-    └──────────────────────────────────────────────────┘
-```
-
----
-
-## Detailed Component Breakdown
-
-### 1. Data Pipeline & Processing
-
-#### **Engine: Pandas + NumPy**
-
-The data pipeline transforms raw job postings into analysis-ready formats.
-
-**Location**: `job_obs/service/dashboard_data.py` and `job_obs/service/sample_search.py`
-
-**Process Flow**:
-
-1. **Data Ingestion** (`pandas.read_csv`)
-   - Reads `data/raw_data.csv` with Brazilian locale settings
-   - Handles decimal separators (`,`) and thousands separators (`.`)
-   - Preserves encoding (UTF-8) for Portuguese characters
-
-2. **Data Cleaning & Normalization**
-   - **Job Title Standardization**: Maps Portuguese job titles to canonical English roles
-     - Example: "Cientista de Dados" → "Data Scientist"
-     - Uses `change_cargo()` function with dictionary mapping
-   - **Location Parsing**: Extracts state codes from free-text location strings
-     - Accent-insensitive matching (São Paulo, Sao Paulo → SP)
-     - Handles variations and abbreviations
-   - **Benefits Expansion**: Converts comma-separated benefits into boolean columns
-     - Input: "VR, VA, Plano de Saúde"
-     - Output: `vr=1, va=1, plano_saude=1, vt=0, ...`
-
-3. **Feature Engineering**
-   - Calculates salary statistics by seniority level
-   - Groups data by state, modality, and role
-   - Generates aggregations for visualizations
-
-4. **Output Generation**
-   - Saves cleaned data to `data/vagas_processadas.csv`
-   - Exports dashboard configuration to `job_obs/static/images/dashboard_context.json`
-
-**Key Functions**:
-```python
-# Job title normalization
-change_cargo(cargo: str) -> str
-
-# State extraction
-extract_state(location: str) -> str
-
-# Benefits parsing
-expand_benefits(benefits_str: str) -> dict
-```
-
----
-
-### 2. Web Application (Flask)
-
-#### **Engine: Flask 3.1.2 + Jinja2**
-
-The Flask application serves as the central web server and routing system.
-
-**Location**: `job_obs/app.py`
-
-**Routes**:
-
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/` | GET | Landing page with project overview |
-| `/dashboard` | GET | Interactive dashboard with Plotly charts |
-| `/api/search` | GET | Semantic search API endpoint |
-| `/vaga/nova` | GET/POST | Form to submit new job postings |
-| `/analisys_html` | GET | Gallery of published analyses |
-| `/analisys_html/<filename>` | GET | Render specific analysis |
-| `/analisys_secondary_files/<path>` | GET | Serve analysis assets (CSS/JS/images) |
-
-**Template System**:
-- **`base.html`**: Master template with navbar, footer, and dark mode toggle
-- **`index.html`**: Landing page extending base template
-- **`dashboard.html`**: Dashboard view with Plotly chart containers
-- **`analisys-default.html`**: Renders Markdown-based analyses within site layout
-- **`analisys-detailed.html`**: Gallery view for browsing published analyses
-
-**Static Assets**:
-- CSS: Custom stylesheets for dark mode, animations, form styling
-- JavaScript: Dark mode persistence, search functionality, chart interactions
-- Images: Logos, icons, and dashboard context JSON
-
----
-
-### 3. Semantic Search Engine
-
-#### **Engine: SentenceTransformers + Scikit-learn**
-
-The search system uses deep learning to understand natural language queries.
-
-**Model**: `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`
-- Multilingual support (Portuguese/English)
-- 768-dimensional embeddings
-- Trained on paraphrase detection tasks
-
-**Location**: `job_obs/service/sample_search.py` (training) and `job_obs/app.py` (inference)
-
-**How It Works**:
-
-1. **Embedding Generation** (Offline)
-   ```python
-   # Compose semantic-rich text for each job
-   text = f"{cargo} {nivel} {estado} {modalidade_trabalho}"
-   
-   # Encode to 768-dim vector
-   embedding = model.encode([text])[0]
-   
-   # Save all embeddings
-   np.save('embeddings.npy', embeddings)
-   ```
-
-2. **Query Processing** (Runtime)
-   ```python
-   # User query: "cientista de dados remoto senior SP"
-   query_embedding = model.encode([user_query])
-   
-   # Calculate cosine similarity with all jobs
-   scores = cosine_similarity(query_embedding, embeddings)[0]
-   
-   # Return top-k matches sorted by relevance
-   top_indices = np.argsort(scores)[::-1][:k]
-   ```
-
-3. **API Response**
-   - Returns JSON with job details and similarity scores
-   - Supports pagination via `k` parameter (max 100)
-   - Handles empty queries gracefully
-
-**Performance**:
-- Average query time: <100ms
-- Supports concurrent requests
-- Embeddings loaded once at startup
-
----
-
-### 4. Dashboard System
-
-#### **Engine: Plotly.js 2.27.0 + Bootstrap 5.3**
-
-The dashboard provides interactive, publication-quality visualizations.
-
-**Location**: `job_obs/service/dashboard_data.py` (generation) and `job_obs/templates/dashboard.html` (rendering)
-
-**Visualization Types**:
-
-1. **Salary Distributions**
-   - Histograms with KDE curves
-   - Box plots by seniority level
-   - Violin plots showing full distribution shapes
-
-2. **Geographic Analysis**
-   - Choropleth map of Brazil (using GeoJSON boundaries)
-   - State-level aggregations
-   - Heatmap of state × seniority level
-
-3. **Categorical Breakdowns**
-   - Work modality (Remote/Hybrid/Onsite) pie charts
-   - Benefits prevalence bar charts
-   - Role distribution sunburst charts
-
-4. **Comparative Analysis**
-   - Base salary vs. total compensation scatter plots
-   - Seniority progression line charts
-   - Multi-series comparisons
-
-**Dark Mode Support**:
-- All charts have light/dark variants pre-generated
-- Theme switching syncs across all Plotly instances
-- CSS variables ensure consistent color schemes
-
-**Chart Configuration Export**:
-```python
-# dashboard_data.py generates this structure
-{
-  "graficos": [
-    {
-      "data": [...],          # Plotly traces
-      "layout": {...},        # Plotly layout config
-      "config": {...},        # Plotly display config
-      "id": "salary-hist"
-    },
-    ...
-  ],
-  "stats": {                  # Summary statistics
-    "mean_salary": 12500.00,
-    "median_salary": 11000.00,
-    ...
-  }
-}
-```
-
-**Interactivity**:
-- Hover tooltips with detailed information
-- Click-to-filter on legend items
-- Zoom, pan, and export controls
-- Responsive layout for mobile devices
-
----
-
-### 5. Analysis Publishing Platform
-
-#### **Engine: Python-Frontmatter + Markdown + Custom HTML/CSS/JS**
-
-The platform allows contributors to publish rich, interactive analyses.
-
-**Location**: `analisys_html/` (HTML files) and `analisys_secondary_files/` (assets)
-
-**How Analyses Work**:
-
-1. **Frontmatter Metadata** (YAML)
-   ```yaml
-   ---
-   title: São Paulo Salary Analysis
-   author: Richard Viana
-   date: 22/11/2025
-   subject: São Paulo Job Market
-   summary: Complete analysis with interactive charts
-   image_capa: analysis-hero.jpeg
-   ---
-   ```
-
-2. **HTML Structure**
-   - Full HTML5 document with `<head>` and `<body>`
-   - Bootstrap 5.3 grid system for responsive layout
-   - Custom sections with semantic IDs for navigation
-
-3. **CSS Styling**
-   - CSS variables for light/dark theme switching
-   - Custom components (cards, tables, hero sections)
-   - Animation keyframes for scroll effects
-
-4. **JavaScript Functionality**
-   - Dark mode persistence with localStorage
-   - Scroll progress indicator
-   - Smooth scrolling navigation
-   - Plotly chart theme synchronization
-
-5. **Plotly Integration**
-   - Charts defined with `Plotly.newPlot()`
-   - Theme-aware color schemes
-   - Interactive hover and click events
-
-**Rendering Pipeline**:
-```
-.html file → frontmatter.load() → extract metadata + content
-          ↓
-    metadata used for gallery card
-          ↓
-    content rendered in template (analisys-default.html or standalone)
-          ↓
-    served at /analisys_html/<filename>
-```
-
----
-
-## Technology Stack
-
-### Backend
-- **Python 3.12**: Core language
-- **Flask 3.1.2**: Web framework
-- **Pandas 2.2+**: Data manipulation
-- **NumPy**: Numerical computing
-- **Scikit-learn**: Cosine similarity calculations
-- **SentenceTransformers**: Embedding generation
-- **PyTorch**: ML backend for transformers
-- **Python-Frontmatter**: YAML metadata parsing
-- **Markdown**: Content conversion
-
-### Frontend
-- **Bootstrap 5.3.3**: UI framework
-- **Plotly.js 2.27.0**: Interactive charts
-- **Bootstrap Icons 1.11.1**: Icon library
-- **Vanilla JavaScript**: Custom interactions
-- **CSS3**: Custom styling with variables
-
-### Data Science
-- **sentence-transformers/paraphrase-multilingual-mpnet-base-v2**: Embedding model
-- **Hugging Face Transformers**: Model loading and inference
-
-### Development
-- **Git**: Version control
-- **Python venv**: Virtual environment management
-
----
-
-## Getting Started
-
-### Prerequisites
-- Python 3.12+
-- 4GB+ RAM (for loading transformer models)
-- Modern web browser
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/rick0110/job-observatory-data-sciece.git
-   cd coletadados
-   ```
-
-2. **Create and activate virtual environment**
-   ```bash
-   python -m venv job_obs_env
-   source job_obs_env/bin/activate  # Linux/Mac
-   # job_obs_env\Scripts\activate  # Windows
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Generate processed data and embeddings**
-   ```bash
-   cd job_obs/service
-   python sample_search.py
-   # Output: ../../data/vagas_processadas.csv and ../../data/embeddings.npy
-   ```
-
-5. **Build dashboard context**
-   ```bash
-   python dashboard_data.py
-   # Output: ../static/images/dashboard_context.json
-   ```
-
-6. **Run the application**
-   ```bash
-   cd ..
-   python app.py
-   # Server starts at http://0.0.0.0:5005
-   ```
-
-7. **Access the platform**
-   - Landing page: http://localhost:5005/
-   - Dashboard: http://localhost:5005/dashboard
-   - Analyses: http://localhost:5005/analisys_html
-
----
-
-## API Documentation
-
-### GET /api/search
-
-Semantic search endpoint for job postings.
-
-**Parameters**:
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `q` | string | Yes | - | Natural language query (Portuguese or English) |
-| `k` | integer | No | 20 | Number of results to return (max: 100) |
-
-**Example Request**:
 ```bash
-curl "http://localhost:5005/api/search?q=cientista%20de%20dados%20remoto%20senior&k=5"
+source job_obs_env/bin/activate
 ```
 
-**Example Response**:
+Or create a fresh one:
+
+```bash
+python -m venv job_obs_env
+source job_obs_env/bin/activate
+```
+
+### 2) Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3) Build the unified dataset
+
+This step reads:
+
+- `data/raw_data.csv` (CSV)
+- `data/linkedin_data_raw.json` (JSON)
+
+and writes:
+
+- `data/vagas_unificadas.csv`
+
+Run:
+
+```bash
+python -m data_treatment.merge_data_sources
+```
+
+Notes:
+
+- The LinkedIn processing step uses regex extraction heavily, and also contains an automatic LLM fallback for region detection when regex fails (see “NLP extraction pipeline”). That can be slow the first time if models are not cached.
+
+### 4) Generate embeddings (semantic search index)
+
+This step reads:
+
+- `data/vagas_unificadas.csv`
+
+and writes:
+
+- `data/embeddings.npy`
+
+Run:
+
+```bash
+python -m data_treatment.generate_embeddings
+```
+
+Practical note: on large datasets this can take several minutes.
+
+### 5) Generate the dashboard JSON context
+
+The dashboard page is rendered from a precomputed JSON file:
+
+- `job_obs/static/images/dashboard_context.json`
+
+Generate it with:
+
+```bash
+python -m job_obs.service.dashboard_data
+```
+
+Important: this script internally re-runs the merge pipeline, so it expects `data/raw_data.csv` and `data/linkedin_data_raw.json` to exist.
+
+### 6) Start the Flask server
+
+The Flask app expects to be started from the `job_obs/` folder (this keeps relative template/static paths consistent):
+
+```bash
+cd job_obs
+python app.py
+```
+
+Open:
+
+- Home: http://localhost:5005/
+- Dashboard: http://localhost:5005/dashboard
+- Analyses gallery: http://localhost:5005/analisys_html
+
+## What gets generated (artifacts)
+
+These are the key “build outputs” that the Flask app consumes:
+
+- `data/vagas_unificadas.csv`
+  - unified dataset used by the dashboard and API
+- `data/embeddings.npy`
+  - NumPy matrix of sentence embeddings (used by `/api/search`)
+- `job_obs/static/images/dashboard_context.json`
+  - Plotly figures + summary stats + sample table (used by `/dashboard`)
+
+There is also a legacy/experimental output generated by an older script:
+
+- `data/vagas_processadas.csv`
+  - produced by `job_obs/service/sample_search.py`
+  - **not used by the Flask app** (the app uses `vagas_unificadas.csv` instead)
+
+## Architecture (how components connect)
+
+At a high level:
+
+1. Raw sources
+   - CSV: `data/raw_data.csv`
+   - LinkedIn scrape JSON: `data/linkedin_data_raw.json`
+2. Unification + extraction
+   - `data_treatment/merge_data_sources.py` → `data/vagas_unificadas.csv`
+3. Embeddings
+   - `data_treatment/generate_embeddings.py` → `data/embeddings.npy`
+4. Dashboard context
+   - `job_obs/service/dashboard_data.py` → `job_obs/static/images/dashboard_context.json`
+5. Web app
+   - `job_obs/app.py`
+     - loads `vagas_unificadas.csv`, `embeddings.npy`, and `dashboard_context.json` at startup
+     - serves `/dashboard`, `/api/search`, `/vaga/nova`, `/analisys_html`
+
+## Data model (unified columns)
+
+The central dataset is the unified CSV `data/vagas_unificadas.csv`.
+
+The final unified schema is defined in `data_treatment/merge_data_sources.py` and is also documented (in Portuguese) in `data_treatment/README.md`.
+
+The unified columns are:
+
+| Column | Meaning |
+|---|---|
+| `company` | Company name |
+| `role` | Normalized role/job function |
+| `seniority` | Normalized seniority label |
+| `region` | State/region code (e.g., `SP`, `RJ`, `MG`, or `REMOTE`) |
+| `work_model` | Work modality (`remote`, `hybrid`, `on-site`, or `not_specified`) |
+| `contract_type` | Contract type (e.g., CLT, PJ, etc. if extracted) |
+| `salary` | Base salary (numeric when available) |
+| `total_monthly_compensation` | Total monthly compensation (numeric when available) |
+| `total_annual_compensation` | Total annual compensation (numeric when available) |
+| `experience_years` | Experience requirement (string extracted by regex) |
+| `technologies` | Tools/tech extracted from description |
+| `benefits` | Benefits extracted from description |
+| `education` | Education requirement extracted from description |
+| `languages` | Language requirement extracted from description |
+| `description` | Text used for embeddings (merged/cleaned) |
+| `source` | Data source (`raw_data`, `linkedin`, or `manual`) |
+
+### Normalized value mappings (what the UI expects)
+
+The dashboard and API use these internal keys and map them to Portuguese labels for display.
+
+Seniority (`seniority`):
+
+- `estagio`, `junior`, `pleno`, `senior`, `staff`, `lead`, `manager`, `not_specified`
+
+Work model (`work_model`):
+
+- `remote`, `hybrid`, `on-site`, `not_specified`
+
+## Data ingestion
+
+### Source A: `data/raw_data.csv`
+
+This is a CSV in Portuguese column naming (legacy source). The merge pipeline maps these columns to the unified schema.
+
+Example mapping implemented in `data_treatment/merge_data_sources.py`:
+
+- `cargo` → `role`
+- `empresa` → `company`
+- `salario_base` → `salary`
+- `modalidade_trabalho` → `work_model`
+- `nivel` → `seniority`
+- `beneficios` → `benefits`
+- `remuneracao_total_mensal` → `total_monthly_compensation`
+
+Additionally, `region` is derived from a free-text location column using regex.
+
+### Source B: LinkedIn scraper → `data/linkedin_data_raw.json`
+
+The Selenium scraper lives in `job_scrapper/`:
+
+- `job_scrapper/specialized_scrappers.py` contains `scrape_from_linkedin(url, headless=True)`
+- `job_scrapper/update_data.py` reads a list of LinkedIn search URLs and writes the combined JSON output
+
+Input file:
+
+- `job_scrapper/.config/links_linkedin.txt`
+  - one URL per line
+
+Run the scraper (from repo root):
+
+```bash
+python job_scrapper/update_data.py
+```
+
+Output:
+
+- `data/linkedin_data_raw.json`
+
+Practical constraints (based on current code):
+
+- It tries to launch a Chrome/Chromium browser and may require you to be logged in.
+- It uses Selenium Manager first; if that fails it falls back to `webdriver_manager`.
+- Headless mode can be toggled (the default in `update_data.py` is currently `headless=False`).
+
+## Data unification pipeline (`data_treatment/merge_data_sources.py`)
+
+Entry point:
+
+```bash
+python -m data_treatment.merge_data_sources
+```
+
+What it does:
+
+1) Loads and normalizes `raw_data.csv`
+
+- Renames columns into the unified schema
+- Normalizes `seniority` using a mapping (e.g., “Júnior” → `junior`)
+- Normalizes `work_model` using a mapping (e.g., “remoto” → `remote`)
+- Extracts `region` from free-text location with regex
+- Builds a `description` column by concatenating available fields
+
+2) Loads and processes LinkedIn JSON using the LinkedIn pipeline
+
+- `LinkedInDataPipeline.clean_job_raw_positions()`
+  - determines `role` and `seniority` mainly via regex patterns
+- `LinkedInDataPipeline.clan_regions()`
+  - extracts `region` (regex first; can fall back to an LLM)
+- `LinkedInDataPipeline.extract_information_regex()`
+  - extracts `work_model`, `contract_type`, `salary`, `experience_years`, `technologies`, `education`, `languages`, `benefits`
+
+3) Concatenates both into one DataFrame, and builds binary benefit columns
+
+- After merging, the pipeline creates columns like `benefit_<name>` with `yes/no` values.
+
+Output:
+
+- `data/vagas_unificadas.csv`
+
+## NLP extraction pipeline (regex + LLM fallback)
+
+The LinkedIn processing pipeline is implemented in `data_treatment/likedin_data_pipeline.py`.
+
+### Regex dictionaries
+
+This module defines extensive regex dictionaries:
+
+- `ROLE_REGEX`: maps many job titles/keywords (pt/en/es) into role categories
+- `SENIORITY_REGEX`: maps terms like `jr`, `pleno`, `senior`, `lead`, etc.
+- `REGIONS_REGEX`: maps many state names + “remote” patterns
+
+### LLM fallback behavior (important)
+
+Even when you do not explicitly request LLM usage:
+
+- `LinkedInDataPipeline.clan_regions()` will attempt regex first
+- if it fails, it tries to lazy-load a `transformers.pipeline` (`text2text-generation`) using `google/flan-t5-base`
+  - device is chosen automatically: CUDA if available, otherwise CPU
+
+This can significantly increase runtime and the first run may download model weights.
+
+## Embeddings generation (`data_treatment/generate_embeddings.py`)
+
+Entry point:
+
+```bash
+python -m data_treatment.generate_embeddings
+```
+
+Model:
+
+- `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`
+
+How the embedding text is built (actual logic):
+
+- The script concatenates the most relevant fields:
+  - `role`, `seniority`, `region`, `work_model`
+  - `technologies` and `benefits` if present and not `not_specified`
+  - `description` (truncated to 500 characters)
+
+Then it runs `SentenceTransformer.encode(...)` in batches and saves:
+
+- `data/embeddings.npy`
+
+## Dashboard generation (`job_obs/service/dashboard_data.py`)
+
+Entry point:
+
+```bash
+python -m job_obs.service.dashboard_data
+```
+
+This script:
+
+1) Calls the merge pipeline again (`run_merge_pipeline`) to ensure `data/vagas_unificadas.csv` is fresh.
+2) Builds a dashboard context object with:
+
+- `visualizations`: a list of Plotly figures (light + dark variants)
+- `summary`: basic statistics (count, mean salary, median salary, mean total comp)
+- `sample_jobs`: first rows formatted for the dashboard table
+
+3) Writes:
+
+- `job_obs/static/images/dashboard_context.json`
+
+### What charts are generated
+
+Charts are defined as functions in `job_obs/service/dashboard_data.py` and serialized to JSON.
+The current set includes:
+
+- salary distribution by seniority (histogram)
+- boxplot by seniority
+- top 10 states by job count
+- heatmap (state × seniority) with mean salary
+- work modality distribution (pie)
+- mean salary by top roles
+- top benefits
+- interactive choropleth map of Brazil
+
+The choropleth map downloads a Brazil states GeoJSON from:
+
+- https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson
+
+If you run the dashboard script without internet access, the map build will fail.
+
+## Flask application (`job_obs/app.py`)
+
+Start from `job_obs/`:
+
+```bash
+cd job_obs
+python app.py
+```
+
+At startup, the app loads into memory:
+
+- `data/vagas_unificadas.csv` → a pandas DataFrame
+- `data/embeddings.npy` → a NumPy array
+- SentenceTransformer model → `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`
+- `job_obs/static/images/dashboard_context.json` → dashboard context used by `/dashboard`
+
+### Routes
+
+| Route | Method | What it does |
+|---|---:|---|
+| `/` | GET | Landing page |
+| `/dashboard` | GET | Dashboard rendered with precomputed context |
+| `/api/search` | GET | Semantic search (embeddings + cosine similarity) |
+| `/vaga/nova` | GET/POST | Manual job posting form (also updates embeddings) |
+| `/analisys_html` | GET | Analysis gallery (reads YAML frontmatter) |
+| `/analisys_html/<file>` | GET | Renders one analysis file (frontmatter + markdown rendering) |
+
+## A human-friendly summary and examples
+
+If you prefer a quick, plain explanation: this project collects job postings
+from one or more input sources, normalizes them into a simple, predictable
+table, generates semantic embeddings for textual search, and produces a set of
+interactive visualizations consumed by a small Flask app.
+
+Quick CLI examples:
+
+```bash
+# 1) Update raw LinkedIn data (scraper)
+python job_scrapper/update_data.py
+
+# 2) Merge/normalize data
+python -m data_treatment.merge_data_sources
+
+# 3) Generate embeddings
+python -m data_treatment.generate_embeddings
+
+# 4) Build dashboard context
+python -m job_obs.service.dashboard_data
+
+# 5) Run the web app
+cd job_obs && python app.py
+```
+
+Programmatic examples (Python):
+
+```python
+from data_treatment.merge_data_sources import run_merge_pipeline
+df, benefits = run_merge_pipeline(
+    raw_data_path='data/raw_data.csv',
+    linkedin_data_path='data/linkedin_data_raw.json',
+    output_path='data/vagas_unificadas.csv',
+)
+
+from data_treatment.generate_embeddings import generate_embeddings
+emb = generate_embeddings(input_path='data/vagas_unificadas.csv', output_path='data/embeddings.npy')
+```
+
+How the parts were implemented (short):
+
+- Collection: scraper in `job_scrapper/` uses Selenium to assemble a JSON file.
+- Unification: `merge_data_sources.py` maps legacy Portuguese column names
+  to an English canonical schema, normalizes text, and extracts `region`,
+  `work_model` and `seniority` using deterministic mappings and regexes.
+- NLP extraction: `likedin_data_pipeline.py` uses big regex dictionaries for
+  speed and reliability, with optional small LLM fallbacks when regexes fail.
+- Embeddings: `generate_embeddings.py` builds a compact text per job and
+  runs a SentenceTransformers model to produce vectors saved as `embeddings.npy`.
+- Dashboard: `dashboard_data.py` builds Plotly figures and serializes them to JSON
+  so the web layer can render fast.
+
+If you'd like more tutorials (e.g., how to add a new regex rule, or how to
+deploy the Flask app behind a production server), tell me which topic and I
+will expand this README with step-by-step instructions.
+| `/analisys_secondary_files/<path>` | GET | Serves analysis assets (no-cache) |
+
+### Semantic search API (`/api/search`)
+
+The API computes cosine similarity between the query embedding and the stored embeddings matrix.
+
+Parameters:
+
+- `q`: query string
+- `k`: number of results (default 20, min 1, max 100)
+
+Example:
+
+```bash
+curl "http://localhost:5005/api/search?q=cientista%20de%20dados%20remote%20SP&k=5"
+```
+
+Response shape (current implementation):
+
 ```json
 {
   "results": [
     {
-      "cargo": "Data Scientist",
+      "cargo": "data_scientist",
       "nivel": "Sênior",
       "estado": "SP",
       "modalidade_trabalho": "Remoto",
-      "salario_base": 15300.0,
-      "remuneracao_total_mensal": 20746.0
-    },
-    {
-      "cargo": "Data Scientist",
-      "nivel": "Sênior",
-      "estado": "RJ",
-      "modalidade_trabalho": "Híbrido",
-      "salario_base": 14500.0,
-      "remuneracao_total_mensal": 19200.0
+      "salario_base": 12.5,
+      "remuneracao_total_mensal": 12.5
     }
   ]
 }
 ```
 
-**Error Response**:
-```json
-{
-  "error": "Error message",
-  "results": []
-}
-```
+Notes:
 
----
+- The API returns *display labels* for seniority and work model when the internal values match known keys.
+- The dashboard’s frontend currency formatting currently multiplies numeric values by 1000 before formatting (see `job_obs/static/js/search_sample_job.js`). This implies the dataset may store salaries in “thousands” units (e.g., `12.5` meaning “R$ 12,500”).
 
-## Contributing Analyses
+### Manual job submission (`/vaga/nova`)
 
-We welcome community contributions of job market analyses! Follow this comprehensive guide to publish your analysis on the platform.
+The form in `job_obs/templates/new_vag.html` posts fields:
 
-### Overview of Analysis Structure
+- `cargo`, `nivel`, `estado`, `modalidade`, `salario`, `descricao`
 
-Each analysis consists of:
-1. **Main HTML file** (`analisys_html/<your-analysis>.html`)
-2. **Assets folder** (`analisys_secondary_files/<your-analysis>/`)
-   - `css/` - Custom stylesheets
-   - `js/` - JavaScript files
-   - `images/` - Images and graphics
+On POST, the server:
 
-### Step-by-Step Contribution Guide
+1) appends a new row to the in-memory DataFrame
+2) generates an embedding for `"{cargo} {descricao}"`
+3) appends the embedding to the in-memory embeddings matrix
+4) persists the new row and new embeddings back to disk:
+   - `data/vagas_unificadas.csv`
+   - `data/embeddings.npy`
 
-#### Step 1: Create Your Analysis HTML File
+You can test posting via curl (form-encoded):
 
-Create a file in `analisys_html/` with this structure:
-
-**File**: `analisys_html/remote-work-analysis.html`
-
-```html
----
-title: Remote Work Trends in Data Science
-author: Your Name
-date: 23/11/2025
-subject: Remote Work Analysis
-summary: Analysis of remote work trends, salary differences, and geographic distribution in Brazilian data science market.
-image_capa: remote-hero.jpg
----
-
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Remote Work Trends - Data Jobs Observatory</title>
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
-    <!-- Custom CSS - IMPORTANT: Use this exact path pattern -->
-    <link rel="stylesheet" href="/analisys_secondary_files/remote-work-analysis/css/analysis-style.css">
-    
-    <!-- Plotly for interactive charts -->
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-</head>
-<body>
-    <!-- Scroll Progress Bar -->
-    <div class="scroll-progress" aria-hidden="true">
-        <div class="progress-bar"></div>
-    </div>
-
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg portal-navbar sticky-top shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-semibold" href="#overview" data-scroll>
-                Data Jobs Observatory
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
-                    data-bs-target="#mainNavbar">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNavbar">
-                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#overview" data-scroll>Overview</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#metrics" data-scroll>Metrics</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#charts" data-scroll>Charts</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#conclusions" data-scroll>Conclusions</a>
-                    </li>
-                </ul>
-                <!-- Dark Mode Toggle -->
-                <div class="d-flex align-items-center gap-3 mt-3 mt-lg-0">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" id="darkModeSwitch">
-                        <label class="form-check-label" for="darkModeSwitch">
-                            <i class="bi bi-moon-stars"></i>
-                        </label>
-                    </div>
-                    <a href="/analisys_html" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-arrow-left"></i> All Analyses
-                    </a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <div class="badge bg-primary-soft text-primary mb-3">
-                        Market Analysis
-                    </div>
-                    <h1 class="display-4 fw-bold mb-4">
-                        Remote Work Trends in Data Science
-                    </h1>
-                    <p class="lead text-muted mb-4">
-                        Analysis of remote work trends, salary differences, and 
-                        geographic distribution in Brazilian data science market.
-                    </p>
-                    <div class="d-flex gap-3 align-items-center">
-                        <div>
-                            <small class="text-muted d-block">Author</small>
-                            <strong>Your Name</strong>
-                        </div>
-                        <div class="vr"></div>
-                        <div>
-                            <small class="text-muted d-block">Date</small>
-                            <strong>November 23, 2025</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <!-- Hero image - stored in analisys_secondary_files/remote-work-analysis/images/ -->
-                    <img src="/analisys_secondary_files/remote-work-analysis/images/remote-hero.jpg" 
-                         alt="Remote Work Analysis" 
-                         class="img-fluid rounded-4 shadow-lg">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Main Content -->
-    <main class="container my-5">
-        <!-- Overview Section -->
-        <section id="overview" class="mb-5">
-            <h2 class="section-title">Executive Summary</h2>
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="bi bi-laptop"></i>
-                        </div>
-                        <h3 class="stat-value">67%</h3>
-                        <p class="stat-label">Remote Positions</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="bi bi-cash-stack"></i>
-                        </div>
-                        <h3 class="stat-value">R$ 15,200</h3>
-                        <p class="stat-label">Avg Remote Salary</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="bi bi-graph-up"></i>
-                        </div>
-                        <h3 class="stat-value">+23%</h3>
-                        <p class="stat-label">YoY Growth</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Charts Section -->
-        <section id="charts" class="mb-5">
-            <h2 class="section-title">Data Visualizations</h2>
-            
-            <!-- Chart 1: Remote vs Onsite Salary Distribution -->
-            <div class="chart-container mb-4">
-                <h3 class="chart-title">Salary Distribution by Work Modality</h3>
-                <div id="grafico-salary-modality"></div>
-            </div>
-
-            <!-- Chart 2: Geographic Distribution -->
-            <div class="chart-container mb-4">
-                <h3 class="chart-title">Remote Jobs by State</h3>
-                <div id="grafico-geographic"></div>
-            </div>
-        </section>
-
-        <!-- Conclusions Section -->
-        <section id="conclusions" class="mb-5">
-            <h2 class="section-title">Key Findings</h2>
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <ul class="list-unstyled">
-                        <li class="mb-3">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            Remote positions offer 12% higher average salaries
-                        </li>
-                        <li class="mb-3">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            São Paulo leads with 45% of remote opportunities
-                        </li>
-                        <li class="mb-3">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            Senior roles are 3x more likely to be remote
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="portal-footer">
-        <div class="container text-center">
-            <p class="mb-0">Data Jobs Observatory © 2025</p>
-        </div>
-    </footer>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Custom JavaScript - IMPORTANT: Use this exact path pattern -->
-    <script src="/analisys_secondary_files/remote-work-analysis/js/animations.js"></script>
-    <script src="/analisys_secondary_files/remote-work-analysis/js/charts-config.js"></script>
-</body>
-</html>
-```
-
-**Key Points**:
-- ✅ **Frontmatter at top**: YAML metadata between `---` markers
-- ✅ **Full HTML document**: Complete `<html>`, `<head>`, and `<body>` tags
-- ✅ **Path convention**: Assets use `/analisys_secondary_files/<analysis-name>/...`
-- ✅ **Dark mode toggle**: Include the checkbox with `id="darkModeSwitch"`
-- ✅ **Bootstrap 5.3**: Use for responsive grid and components
-- ✅ **Plotly charts**: Use `<div>` containers with unique IDs
-
----
-
-#### Step 2: Create CSS Stylesheet
-
-Create your styles in `analisys_secondary_files/<your-analysis>/css/analysis-style.css`
-
-**File**: `analisys_secondary_files/remote-work-analysis/css/analysis-style.css`
-
-```css
-/* ==============================================
-   CSS Variables for Theme Support
-   ============================================== */
-:root {
-    /* Light Mode Colors */
-    --bg: #ffffff;
-    --text: #212529;
-    --muted: #6c757d;
-    --card-bg: #ffffff;
-    --border: rgba(0,0,0,.125);
-    --accent: #0d6efd;
-    --accent-soft: rgba(13, 110, 253, 0.1);
-    --shadow: 0 4px 6px rgba(0,0,0,.1);
-}
-
-/* Dark Mode Colors */
-.dark {
-    --bg: #071023;
-    --text: #e6eef8;
-    --muted: #9fb0c8;
-    --card-bg: #0f1724;
-    --border: rgba(255,255,255,.06);
-    --accent: #4098ff;
-    --accent-soft: rgba(64, 152, 255, 0.16);
-    --shadow: 0 4px 6px rgba(0,0,0,.3);
-}
-
-/* ==============================================
-   Global Styles
-   ============================================== */
-html, body {
-    background-color: var(--bg);
-    color: var(--text);
-    transition: background-color 0.3s ease, color 0.3s ease;
-    scroll-behavior: smooth;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* ==============================================
-   Scroll Progress Bar
-   ============================================== */
-.scroll-progress {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: transparent;
-    z-index: 9999;
-}
-
-.scroll-progress .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), #6610f2);
-    width: 0%;
-    transition: width 0.1s ease;
-}
-
-/* ==============================================
-   Navigation Bar
-   ============================================== */
-.portal-navbar {
-    background-color: var(--card-bg);
-    border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(10px);
-}
-
-.navbar-brand {
-    color: var(--text) !important;
-    font-size: 1.25rem;
-}
-
-.nav-link {
-    color: var(--muted) !important;
-    transition: color 0.2s;
-}
-
-.nav-link:hover {
-    color: var(--accent) !important;
-}
-
-/* ==============================================
-   Hero Section
-   ============================================== */
-.hero-section {
-    padding: 5rem 0;
-    background: linear-gradient(135deg, var(--accent-soft), transparent);
-}
-
-.bg-primary-soft {
-    background-color: var(--accent-soft) !important;
-}
-
-.text-primary {
-    color: var(--accent) !important;
-}
-
-/* ==============================================
-   Stat Cards
-   ============================================== */
-.stat-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 2rem;
-    text-align: center;
-    transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow);
-}
-
-.stat-icon {
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 1rem;
-    background: var(--accent-soft);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: var(--accent);
-}
-
-.stat-value {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 0.5rem;
-}
-
-.stat-label {
-    color: var(--muted);
-    font-size: 1rem;
-    margin: 0;
-}
-
-/* ==============================================
-   Section Titles
-   ============================================== */
-.section-title {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 2rem;
-    color: var(--text);
-    position: relative;
-    padding-bottom: 0.5rem;
-}
-
-.section-title::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 60px;
-    height: 4px;
-    background: var(--accent);
-    border-radius: 2px;
-}
-
-/* ==============================================
-   Chart Containers
-   ============================================== */
-.chart-container {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: var(--shadow);
-}
-
-.chart-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-    color: var(--text);
-}
-
-/* ==============================================
-   Cards
-   ============================================== */
-.card {
-    background: var(--card-bg);
-    border-color: var(--border);
-    transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-/* ==============================================
-   Footer
-   ============================================== */
-.portal-footer {
-    background-color: var(--card-bg);
-    border-top: 1px solid var(--border);
-    padding: 2rem 0;
-    margin-top: 4rem;
-    color: var(--muted);
-}
-
-/* ==============================================
-   Responsive Design
-   ============================================== */
-@media (max-width: 768px) {
-    .hero-section {
-        padding: 3rem 0;
-    }
-    
-    .section-title {
-        font-size: 1.5rem;
-    }
-    
-    .stat-value {
-        font-size: 2rem;
-    }
-}
-```
-
-**Key Points**:
-- ✅ **CSS Variables**: Define colors for both light and dark modes
-- ✅ **`.dark` class**: Applied to `<html>` element by JavaScript
-- ✅ **Smooth transitions**: All color changes animate smoothly
-- ✅ **Responsive**: Mobile-friendly breakpoints
-- ✅ **Component styles**: Reusable classes for cards, charts, etc.
-
----
-
-#### Step 3: Create JavaScript Files
-
-**File 1**: `analisys_secondary_files/remote-work-analysis/js/animations.js`
-
-```javascript
-// ==============================================
-// Dark Mode Toggle with Plotly Chart Sync
-// ==============================================
-(function () {
-    const STORAGE_KEY = 'jobobs-dark-mode';
-    const darkModeSwitch = document.getElementById('darkModeSwitch');
-    const htmlElement = document.documentElement;
-
-    // Apply dark mode class and sync all Plotly charts
-    function applyDarkMode(isDark) {
-        htmlElement.classList.toggle('dark', isDark);
-        if (darkModeSwitch) {
-            darkModeSwitch.checked = isDark;
-        }
-        syncPlotlyCharts(isDark);
-    }
-
-    // Sync all Plotly charts to current theme
-    function syncPlotlyCharts(isDark) {
-        // Call custom theme function if defined in charts-config.js
-        if (typeof window.applyPlotlyTheme === 'function') {
-            window.applyPlotlyTheme(isDark);
-            return;
-        }
-
-        // Fallback: update all Plotly divs
-        const plotlyDivs = document.querySelectorAll('[id^="grafico-"]');
-        plotlyDivs.forEach(div => {
-            if (div.data && div.layout && window.Plotly) {
-                const bgColor = isDark ? '#071023' : '#ffffff';
-                const textColor = isDark ? '#e6eef8' : '#212529';
-                const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-
-                window.Plotly.relayout(div, {
-                    'paper_bgcolor': bgColor,
-                    'plot_bgcolor': bgColor,
-                    'font.color': textColor,
-                    'xaxis.gridcolor': gridColor,
-                    'yaxis.gridcolor': gridColor
-                });
-            }
-        });
-    }
-
-    // Load saved preference or detect system preference
-    try {
-        const savedMode = localStorage.getItem(STORAGE_KEY);
-        if (savedMode === '1' || savedMode === '0') {
-            applyDarkMode(savedMode === '1');
-        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            applyDarkMode(true);
-        } else {
-            applyDarkMode(false);
-        }
-    } catch (error) {
-        console.error('Error loading dark mode preference:', error);
-        applyDarkMode(false);
-    }
-
-    // Toggle dark mode on checkbox change
-    if (darkModeSwitch) {
-        darkModeSwitch.addEventListener('change', function() {
-            const isDark = this.checked;
-            applyDarkMode(isDark);
-            try {
-                localStorage.setItem(STORAGE_KEY, isDark ? '1' : '0');
-            } catch (error) {
-                console.error('Error saving dark mode preference:', error);
-            }
-        });
-    }
-})();
-
-// ==============================================
-// Scroll Progress Bar
-// ==============================================
-(function () {
-    const progressBar = document.querySelector('.scroll-progress .progress-bar');
-    
-    if (progressBar) {
-        window.addEventListener('scroll', function() {
-            const windowHeight = window.innerHeight;
-            const documentHeight = document.documentElement.scrollHeight;
-            const scrolled = window.scrollY;
-            const progress = (scrolled / (documentHeight - windowHeight)) * 100;
-            progressBar.style.width = Math.min(progress, 100) + '%';
-        });
-    }
-})();
-
-// ==============================================
-// Smooth Scroll for Anchor Links
-// ==============================================
-(function () {
-    document.querySelectorAll('a[data-scroll]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-})();
-
-// ==============================================
-// Fade-in Animation on Scroll
-// ==============================================
-(function () {
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -100px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('fade-in');
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-
-    document.querySelectorAll('.chart-container, .stat-card, .card').forEach(el => {
-        observer.observe(el);
-    });
-})();
-```
-
-**File 2**: `analisys_secondary_files/remote-work-analysis/js/charts-config.js`
-
-```javascript
-// ==============================================
-// Plotly Chart Configurations
-// ==============================================
-
-// Wait for DOM and Plotly to load
-document.addEventListener('DOMContentLoaded', function() {
-    // Detect initial theme
-    const isDark = document.documentElement.classList.contains('dark');
-    
-    // Chart 1: Salary Distribution by Modality
-    createSalaryModalityChart(isDark);
-    
-    // Chart 2: Geographic Distribution
-    createGeographicChart(isDark);
-    
-    // Make theme function globally available
-    window.applyPlotlyTheme = function(isDark) {
-        createSalaryModalityChart(isDark);
-        createGeographicChart(isDark);
-    };
-});
-
-// ==============================================
-// Chart 1: Salary Distribution by Work Modality
-// ==============================================
-function createSalaryModalityChart(isDark) {
-    const bgColor = isDark ? '#071023' : '#ffffff';
-    const textColor = isDark ? '#e6eef8' : '#212529';
-    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-    
-    // Sample data - replace with your actual data
-    const data = [
-        {
-            x: ['Junior', 'Mid', 'Senior', 'Lead'],
-            y: [8500, 12000, 18500, 25000],
-            name: 'Remote',
-            type: 'bar',
-            marker: { color: '#0d6efd' }
-        },
-        {
-            x: ['Junior', 'Mid', 'Senior', 'Lead'],
-            y: [7500, 10500, 16500, 22000],
-            name: 'Onsite',
-            type: 'bar',
-            marker: { color: '#6610f2' }
-        }
-    ];
-    
-    const layout = {
-        paper_bgcolor: bgColor,
-        plot_bgcolor: bgColor,
-        font: { color: textColor, family: 'Inter, sans-serif' },
-        xaxis: {
-            title: 'Seniority Level',
-            gridcolor: gridColor
-        },
-        yaxis: {
-            title: 'Average Salary (R$)',
-            gridcolor: gridColor
-        },
-        barmode: 'group',
-        margin: { t: 40, r: 40, b: 60, l: 80 },
-        hovermode: 'closest'
-    };
-    
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
-    };
-    
-    Plotly.newPlot('grafico-salary-modality', data, layout, config);
-}
-
-// ==============================================
-// Chart 2: Geographic Distribution of Remote Jobs
-// ==============================================
-function createGeographicChart(isDark) {
-    const bgColor = isDark ? '#071023' : '#ffffff';
-    const textColor = isDark ? '#e6eef8' : '#212529';
-    
-    // Sample data - replace with your actual data
-    const data = [{
-        type: 'bar',
-        x: ['SP', 'RJ', 'MG', 'RS', 'SC', 'PR', 'BA', 'PE'],
-        y: [450, 280, 120, 95, 85, 70, 45, 35],
-        marker: {
-            color: '#0d6efd',
-            line: { color: textColor, width: 1 }
-        },
-        text: ['450', '280', '120', '95', '85', '70', '45', '35'],
-        textposition: 'outside'
-    }];
-    
-    const layout = {
-        paper_bgcolor: bgColor,
-        plot_bgcolor: bgColor,
-        font: { color: textColor, family: 'Inter, sans-serif' },
-        xaxis: {
-            title: 'State',
-            gridcolor: 'transparent'
-        },
-        yaxis: {
-            title: 'Number of Remote Positions',
-            gridcolor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
-        },
-        margin: { t: 40, r: 40, b: 60, l: 80 }
-    };
-    
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false
-    };
-    
-    Plotly.newPlot('grafico-geographic', data, layout, config);
-}
-```
-
-**Key Points**:
-- ✅ **Theme synchronization**: Charts update when dark mode toggles
-- ✅ **Responsive**: Charts resize with window
-- ✅ **Customizable**: Easy to add new charts
-- ✅ **Data-driven**: Replace sample data with your analysis results
-
----
-
-#### Step 4: Add Images
-
-Place your images in `analisys_secondary_files/<your-analysis>/images/`
-
-**Example**:
-```
-analisys_secondary_files/
-  remote-work-analysis/
-    images/
-      remote-hero.jpg          # Hero section image (1200x600px recommended)
-      chart-screenshot.png     # Supporting images
-      methodology-diagram.svg  # Vector graphics for diagrams
-```
-
-**Image Guidelines**:
-- ✅ **Formats**: JPG (photos), PNG (screenshots), SVG (diagrams)
-- ✅ **Optimization**: Compress images to <500KB each
-- ✅ **Naming**: Use kebab-case (lowercase with hyphens)
-- ✅ **Alt text**: Always provide descriptive alt attributes
-
----
-
-#### Step 5: File Naming Conventions
-
-| Component | Path Pattern | Example |
-|-----------|--------------|---------|
-| HTML File | `analisys_html/<name>.html` | `analisys_html/remote-work-analysis.html` |
-| CSS Folder | `analisys_secondary_files/<name>/css/` | `analisys_secondary_files/remote-work-analysis/css/` |
-| JS Folder | `analisys_secondary_files/<name>/js/` | `analisys_secondary_files/remote-work-analysis/js/` |
-| Images Folder | `analisys_secondary_files/<name>/images/` | `analisys_secondary_files/remote-work-analysis/images/` |
-
-**Naming Rules**:
-- ✅ Use **kebab-case** (lowercase with hyphens)
-- ✅ Keep names **descriptive but concise**
-- ✅ **Match** the HTML filename with the assets folder name
-- ✅ Avoid spaces, special characters, or uppercase letters
-
----
-
-#### Step 6: Testing Your Analysis Locally
-
-1. **Place files in correct locations**
-   ```bash
-   # Your analysis should create these files:
-   analisys_html/remote-work-analysis.html
-   analisys_secondary_files/remote-work-analysis/css/analysis-style.css
-   analisys_secondary_files/remote-work-analysis/js/animations.js
-   analisys_secondary_files/remote-work-analysis/js/charts-config.js
-   analisys_secondary_files/remote-work-analysis/images/remote-hero.jpg
-   ```
-
-2. **Start the Flask server**
-   ```bash
-   cd job_obs
-   python app.py
-   ```
-
-3. **Access your analysis**
-   - Gallery: http://localhost:5005/analisys_html
-   - Direct link: http://localhost:5005/analisys_html/remote-work-analysis.html
-
-4. **Test checklist**
-   - ✅ Analysis appears in gallery with metadata
-   - ✅ All images load correctly
-   - ✅ Dark mode toggle works
-   - ✅ Charts render properly
-   - ✅ Charts update when theme changes
-   - ✅ Navigation links work
-   - ✅ Responsive on mobile (test at 375px width)
-
----
-
-#### Step 7: Submit Your Contribution
-
-1. **Fork the repository**
-   ```bash
-   git clone https://github.com/rick0110/job-observatory-data-sciece.git
-   cd coletadados
-   git checkout -b analysis/remote-work
-   ```
-
-2. **Add your files**
-   ```bash
-   git add analisys_html/remote-work-analysis.html
-   git add analisys_secondary_files/remote-work-analysis/
-   ```
-
-3. **Commit with descriptive message**
-   ```bash
-   git commit -m "Add remote work trends analysis
-
-   - Analyzes salary differences between remote and onsite positions
-   - Includes geographic distribution of remote opportunities
-   - Interactive Plotly charts with dark mode support
-   - Responsive design for mobile devices"
-   ```
-
-4. **Push and create Pull Request**
-   ```bash
-   git push origin analysis/remote-work
-   ```
-
-5. **Pull Request Checklist**
-   - ✅ Descriptive title and summary
-   - ✅ Screenshots of your analysis (light and dark modes)
-   - ✅ Mention any data sources or methodologies
-   - ✅ Confirm all files are in correct locations
-   - ✅ Tested locally before submitting
-
----
-
-### Analysis Best Practices
-
-#### Content Guidelines
-- **Data-driven**: Base conclusions on actual data analysis
-- **Visualizations**: Include at least 3-5 interactive charts
-- **Actionable insights**: Provide clear takeaways for job seekers/employers
-- **Transparency**: Document your methodology and data sources
-- **Accessibility**: Use semantic HTML and descriptive alt text
-
-#### Code Quality
-- **Validate HTML**: Use W3C validator
-- **Optimize assets**: Compress images and minify CSS/JS
-- **Cross-browser**: Test in Chrome, Firefox, Safari
-- **Performance**: Keep page load under 3 seconds
-- **Mobile-first**: Design for small screens, enhance for desktop
-
-#### Design Principles
-- **Consistency**: Follow the existing visual language
-- **Readability**: Use sufficient contrast ratios (WCAG AA)
-- **Whitespace**: Don't overcrowd content
-- **Typography**: Stick to system font stack or web-safe fonts
-- **Color**: Use CSS variables for theme consistency
-
----
-
-## Project Structure
-
-```
-coletadados/
-├── data/
-│   ├── raw_data.csv                      # Input: Raw job postings (pt-BR)
-│   ├── vagas_processadas.csv            # Generated: Processed job data
-│   └── embeddings.npy                    # Generated: Sentence embeddings (768-dim vectors)
-│
-├── job_obs/                              # Main Flask application
-│   ├── app.py                            # Flask routes and application logic
-│   │
-│   ├── service/
-│   │   ├── dashboard_data.py             # Data transformations & Plotly figure generation
-│   │   └── sample_search.py              # Embedding generation & CSV processing
-│   │
-│   ├── templates/                        # Jinja2 templates
-│   │   ├── base.html                     # Master template (navbar, footer, dark mode)
-│   │   ├── index.html                    # Landing page
-│   │   ├── dashboard.html                # Dashboard with Plotly charts
-│   │   ├── analisys-default.html         # Markdown-based analysis renderer
-│   │   ├── analisys-detailed.html        # Analysis gallery view
-│   │   └── new_vag.html                  # Job posting submission form
-│   │
-│   └── static/
-│       ├── css/
-│       │   ├── dark-mode.css             # Dark mode styles and theme switching
-│       │   ├── front-style.css           # Landing page styles
-│       │   ├── form-animation.css        # Form interaction animations
-│       │   └── analysis-detailed.css     # Analysis gallery styles
-│       │
-│       ├── js/
-│       │   ├── base-dark-mode.js         # Dark mode persistence logic
-│       │   ├── dark-mode.js              # Theme toggle functionality
-│       │   ├── form-animation.js         # Form validation and animations
-│       │   ├── reduced-motion.js         # Accessibility: respect prefers-reduced-motion
-│       │   └── search_sample_job.js      # Dashboard search functionality
-│       │
-│       └── images/
-│           └── dashboard_context.json     # Generated: Plotly chart configurations
-│
-├── analisys_html/                        # Published analyses (HTML files)
-│   ├── analise_teste.html                # Example: São Paulo salary analysis
-│   └── [your-analysis].html              # Your contributed analyses
-│
-├── analisys_secondary_files/             # Analysis assets (CSS, JS, images)
-│   └── [analysis-name]/
-│       ├── css/
-│       │   └── analysis-style.css        # Custom styles for the analysis
-│       ├── js/
-│       │   ├── animations.js             # Dark mode, scroll effects, interactions
-│       │   └── charts-config.js          # Plotly chart definitions
-│       └── images/
-│           └── *.jpg, *.png, *.svg       # Images and graphics
-│
-├── job_obs_env/                          # Python virtual environment
-│   ├── bin/                              # Executables (python, pip, flask)
-│   ├── lib/python3.12/site-packages/     # Installed packages
-│   └── pyvenv.cfg                        # Virtual environment configuration
-│
-├── requirements.txt                      # Python dependencies
-├── GUIA_TEMPLATES_ANALISE.md            # Portuguese guide for analysis templates
-├── RUNNING.md                            # Quick start guide
-└── README.md                             # This comprehensive documentation
-```
-
----
-
-## Maintenance and Updates
-
-### Updating Data
 ```bash
-# 1. Replace raw_data.csv with new data
-cp new_data.csv data/raw_data.csv
-
-# 2. Regenerate processed data and embeddings
-cd job_obs/service
-python sample_search.py
-
-# 3. Rebuild dashboard context
-python dashboard_data.py
-
-# 4. Restart Flask server
-cd ..
-python app.py
+curl -X POST http://localhost:5005/vaga/nova \
+  -F 'cargo=Data Scientist' \
+  -F 'nivel=junior' \
+  -F 'estado=SP' \
+  -F 'modalidade=remote' \
+  -F 'salario=12.5' \
+  -F 'descricao=Python, SQL, dashboards, machine learning'
 ```
 
-### Adding New Dependencies
-```bash
-# Install package
-pip install package-name
+Tip: use the same internal keys (`junior`, `remote`, etc.) if you want the UI label mapping to work cleanly.
 
-# Update requirements.txt
-pip freeze > requirements.txt
-```
+### Analysis publishing (`/analisys_html`)
 
-### Monitoring and Logs
-Flask runs in debug mode by default. To run in production:
-```python
-# In app.py, change:
-app.run(host='0.0.0.0', port=5005, debug=False)
-```
+The analysis system is implemented directly in `job_obs/app.py`:
 
----
+1) Gallery route (`/analisys_html`)
+
+- walks the folder `analisys_html/`
+- reads YAML frontmatter manually (expects the first line to be `---`)
+- uses fields like:
+  - `title`, `author`, `date`, `summary`, `image_capa`
+- builds an image URL that points to `/analisys_secondary_files/<slug>/images/<image>`
+
+2) Detail route (`/analisys_html/<file>`)
+
+- uses `python-frontmatter` to parse metadata + content
+- converts the content to HTML using `markdown.markdown(...)` with `fenced_code` and `tables`
+- renders it inside `job_obs/templates/analisys-default.html`
+
+Important note:
+
+- The current example analysis file `analisys_html/analise_teste.html` contains a full HTML document *after* the frontmatter. Markdown rendering generally passes raw HTML through, so it will be injected into the page. For best results, write analyses primarily as Markdown (and only embed HTML snippets when needed).
 
 ## Troubleshooting
 
-### Common Issues
+### Dashboard page is blank / errors on startup
 
-**Issue**: Embeddings generation fails with CUDA error
+The Flask app loads `job_obs/static/images/dashboard_context.json` at import time. If the file does not exist, the app will fail.
+
+Fix:
+
 ```bash
-# Solution: Force CPU-only inference
-export CUDA_VISIBLE_DEVICES=""
-python sample_search.py
+python -m job_obs.service.dashboard_data
 ```
 
-**Issue**: Charts don't appear in dashboard
+### `merge_data_sources` is slow or prints lots of “LLM generated region” logs
+
+This happens because the LinkedIn pipeline tries regex first and then uses a Flan-T5 model as fallback for region detection.
+
+Fix options:
+
+- Run once and let the model download/cache.
+- Ensure you have enough CPU/RAM (or CUDA) for transformers.
+
+### `generate_embeddings` takes too long
+
+This is expected on bigger corpora.
+
+Options:
+
+- Run it on a machine with CUDA.
+- Reduce the dataset size for experiments.
+
+### LinkedIn scraping fails to start the browser
+
+The scraper requires Chrome/Chromium.
+
+Check:
+
 ```bash
-# Solution: Regenerate dashboard context
-cd job_obs/service
-python dashboard_data.py
+chromium-browser --version || google-chrome --version || chromium --version
 ```
 
-**Issue**: Dark mode doesn't persist
-```bash
-# Solution: Check browser localStorage permissions
-# Ensure site is not in incognito/private mode
-```
+Also note that LinkedIn often blocks automated sessions; you may need an interactive (non-headless) run with a logged-in profile.
 
-**Issue**: Analysis assets return 404
-```bash
-# Solution: Verify file paths match exactly
-# HTML: /analisys_secondary_files/<analysis-name>/css/style.css
-# Actual: analisys_secondary_files/<analysis-name>/css/style.css
-```
+## Notes for contributors
 
----
-
-## License
-
-This project is open source and available under the MIT License.
-
----
-
-## Contact and Support
-
-- **Repository**: [github.com/rick0110/job-observatory-data-sciece](https://github.com/rick0110/job-observatory-data-sciece)
-- **Issues**: Submit bug reports and feature requests via GitHub Issues
-- **Discussions**: Join conversations in GitHub Discussions
-
----
-
-## Acknowledgments
-
-- **Data Sources**: Brazilian job market data aggregated from multiple sources
-- **ML Model**: Sentence-Transformers by UKPLab
-- **Visualization**: Plotly.js for interactive charts
-- **Framework**: Flask web framework and Bootstrap UI toolkit
-
----
-
-**Built with ❤️ for the Brazilian Data Science community**
+- The unified schema is the backbone of the project. If you add a new data source, normalize it into the unified columns in `data_treatment/merge_data_sources.py`.
+- If you add new dashboard charts, add a new `build_*` function in `job_obs/service/dashboard_data.py` and include it in `load_dashboard_context()`.
+- If you add new analysis files, make sure they start with YAML frontmatter and any assets go under `analisys_secondary_files/<analysis-slug>/`.
 

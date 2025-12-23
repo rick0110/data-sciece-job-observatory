@@ -9,9 +9,11 @@ env/
 ENV/
 job_obs_env/
 
+
 .vscode/
 .idea/
 *.sublime-*
+/.config
 
 .DS_Store
 Thumbs.db

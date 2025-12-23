@@ -16,7 +16,15 @@
   const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const originalRowsHTML = tbody.innerHTML;
   function formatCurrency(value) {
-    value = 1000*value;
+    if (typeof value === 'string'){
+      value = parseFloat(value.replace(/[^\d.-]/g, ''));
+    }
+    if (value < 100){
+      value = 1000*value;
+    } else {
+      value = value;
+    }
+    
     if (value === null || typeof value === 'undefined') {
       return "—";
     }

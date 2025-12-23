@@ -8,6 +8,7 @@ venv/
 env/
 ENV/
 job_obs_env/
+.venv/
 
 
 .vscode/

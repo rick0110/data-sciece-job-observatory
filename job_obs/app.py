@@ -165,7 +165,7 @@ def nova_vaga():
 # ============================
 @app.route('/analisys_secondary_files/<path:filename>')
 def analisys_assets(filename):
-    base_assets = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'analisys_secondary_files'))
+    base_assets = os.path.abspath('./analisys_secondary_files')
     full_path = os.path.abspath(os.path.join(base_assets, filename))
     if not full_path.startswith(base_assets) or not os.path.isfile(full_path):
         abort(404)
@@ -183,7 +183,7 @@ def analisys_detailed():
     #   FILTRAGEM DE POSTS POSTERIORMENTE
     # =============================
     # =============================
-    base_dir = './../analisys_html'
+    base_dir = './analisys_html'
     dict_analysis = {}
     for root, dirs, files in os.walk(base_dir):
         for file in files:
@@ -213,7 +213,7 @@ def analisys_detailed():
 
 @app.route('/analisys_html/<path:filename>')
 def serve_analysis_file(filename):
-    base_dir = './../analisys_html'
+    base_dir = './analisys_html'
     full_path = os.path.join(base_dir, filename)
     post = frontmatter.load(full_path)
     metadata = post.metadata

@@ -7,9 +7,17 @@
       <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body p-5">
           <h2 class="fw-bold mb-4">Publicar Nova Vaga</h2>
-          <p class="text-muted mb-4">Preencha os dados abaixo para adicionar uma vaga ao observatório. A vaga será indexada automaticamente pela nossa IA.</p>
+          <p class="text-muted mb-4">Preencha os dados abaixo para adicionar uma vaga ao observatório.</p>
           
           <form action="/vaga/nova" method="POST">
+            <div class="row g-3"> 
+              <div class="align-center"> 
+                <div class="col-md-12">
+                  <label for="empresa" class="form-label">Nome da Empresa</label>
+                  <input type="text" class="form-control" id="empresa" name="empresa" required placeholder="Ex: Tech Solutions Ltda">
+                </div>
+              </div>
+            </div>
             <div class="row g-3">
               <div class="col-md-6">
                 <label for="cargo" class="form-label">Cargo</label>
@@ -29,7 +37,7 @@
 
               <div class="col-md-6">
                 <label for="estado" class="form-label">Estado (UF)</label>
-                <input type="text" class="form-control" id="estado" name="estado" placeholder="Ex: SP" maxlength="2">
+                <input type="text" class="form-control" id="estado" name="estado" placeholder="Ex: SP" maxlength="30">
               </div>
 
               <div class="col-md-6">
@@ -48,7 +56,7 @@
 
               <div class="col-12">
                 <label for="descricao" class="form-label">Descrição da Vaga / Requisitos</label>
-                <textarea class="form-control" id="descricao" name="descricao" rows="5" required placeholder="Cole aqui a descrição completa da vaga. Nossa IA usará este texto para a busca."></textarea>
+                <textarea class="form-control" id="descricao" name="descricao" rows="5" required placeholder="Cole aqui a descrição completa da vaga (ex: requisitos, responsabilidades, benefícios)."></textarea>
               </div>
 
               <div class="col-12 mt-4">

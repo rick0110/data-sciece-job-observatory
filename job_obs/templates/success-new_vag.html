@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-5 text-center">
+          <h2 class="fw-bold mb-3">Job posted successfully</h2>
+          <p class="text-muted mb-4">{{ mensagem or "Your job was added to the dataset and indexed for semantic search." }}</p>
+
+          <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a class="btn btn-primary rounded-pill px-4" href="/dashboard">Go to dashboard</a>
+            <a class="btn btn-outline-secondary rounded-pill px-4" href="/vaga/nova">Post another job</a>
+          </div>
+
+          <hr class="my-4" />
+
+          <p class="small text-muted mb-0">
+            Note: the server keeps the embeddings in memory; a restart is not required for the new posting to appear in search.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

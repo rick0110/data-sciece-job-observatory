@@ -7,7 +7,7 @@ fallbacks via `transformers.pipeline` when necessary.
 
 Example usage:
 
-    from data_treatment.likedin_data_pipeline import LinkedInDataPipeline
+    from data_treatment.linkedin_data_pipeline import LinkedInDataPipeline
 
     pipeline = LinkedInDataPipeline("data/linkedin_data_raw.json")
     pipeline.run_pipeline("out/cleaned_jobs.csv")
@@ -100,7 +100,7 @@ ROLE_REGEX: Dict[str, str] = {
     "talent_manager": r"\b(talent\s*manager|gerente\s+de\s+talentos|organizational\s+effectiveness)\b",
     "customer_success": r"\b(customer\s*success|gerente\s+de\s+sucesso|sucesso\s+do\s+cliente|customer\s+experience|cx\b|customer\s+service|ouvidoria|partner\s+success|voice\s+of\s+customer|voc\b)\b",
     "marketing": r"\b(marketing|growth|seo\b|ads\b|midia|media\b|performance|public\s+relations|communications?\s+partner|community\s+engagement|campaigns|shopper\s+insights|visual\s+merchandising|pr\s+manager)\b",
-    "sales": r"\b(sdr\b|sales|vendas|account\s*executive|closer|bd\b|bdr\b|business\s*development|comercial|representante|vendedor|inside\s*sales|appointment\s+setter|etf\s+distribution|renewals\s+manager)\b",
+    "sales": r"\b(sdr\b|sales|vendas|account\s*executive|closer|bd\b|bdr\b|business\s+development|comercial|representante|vendedor|inside\s*sales|appointment\s+setter|etf\s+distribution|renewals\s+manager)\b",
     "operations": r"\b(operations|operacoes|logistica|supply\s*chain|operational\s+excellence|continuous\s+improvement|scheduling\s+optimization|excelencia\s+operacional|transformation\s+office|process\s+optimization|desenvolvimento\s+de\s+processos)\b",
     "finance": r"\b(finance|financas|fp\s*&\s*a|fpa\b|credit|risk|control(?:lership)?|compensation|bookkeeper|anti\s+money\s+laundering|pld\b|banking|tax\b|assessor\s+de\s+investimentos|investimentos|asset\s+management|payments)\b",
     "hr": r"\b(hr\b|human\s*resources|recruiter|recrutador(?:a)?|reclutador|talent\s*acquisition|people\b|rh\b|recrutamento|selecao|pessoal|headhunter|pessoas\s+e\s+cultura|treinamento\s+e\s+desenvolvimento|cultura\s+e\s+comunicacao|recruiting|sourcer)\b",
@@ -246,12 +246,11 @@ class LinkedInDataPipeline:
         """
         self.df.to_csv(output_path, index=False)
     
-    def clan_regions(self, column: str = "raw_location") -> None:
+    def clean_regions(self, column: str = "raw_location") -> None:
         """Detect region/state from a free-form location column.
 
-        Uses `REGIONS_REGEX` for fast detection. If no match is found and an
-        LLM generator is available, the method will prompt the LLM to try to
-        identify the region.
+        Uses `REGIONS_REGEX` for fast detection. If no match is found, the
+        method will prompt the LLM to try to identify the region.
 
         Args:
             column: Name of the column that contains location text (default: "raw_location").
@@ -496,7 +495,7 @@ class LinkedInDataPipeline:
             fallback_to_llm: If True, allow LLM fallback when detecting titles.
         """
         self.clean_job_raw_positions(fallback_to_llm=fallback_to_llm)
-        self.clan_regions()
+        self.clean_regions()
         self.extract_information_regex(
             cols=["work_model", "contract_type", "salary", "experience_years", "technologies", "education", "languages", "benefits"],
             description_col_name="raw_html_description",

@@ -33,7 +33,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from data_treatment.likedin_data_pipeline import LinkedInDataPipeline
+from data_treatment.linkedin_data_pipeline import LinkedInDataPipeline
 
 
 def get_project_root() -> Path:
@@ -235,7 +235,7 @@ def load_and_process_linkedin_data(path: str) -> pd.DataFrame:
     
     pipeline.clean_job_raw_positions()
     
-    pipeline.clan_regions()
+    pipeline.clean_regions()
     
     pipeline.extract_information_regex(
         cols=["work_model", "contract_type", "salary", "experience_years", 

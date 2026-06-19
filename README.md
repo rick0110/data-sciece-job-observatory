@@ -294,7 +294,7 @@ Output:
 
 ## NLP extraction pipeline (regex + LLM fallback)
 
-The LinkedIn processing pipeline is implemented in `data_treatment/likedin_data_pipeline.py`.
+The LinkedIn processing pipeline is implemented in `data_treatment/linkedin_data_pipeline.py`.
 
 ### Regex dictionaries
 
@@ -451,7 +451,7 @@ How the parts were implemented (short):
 - Unification: `merge_data_sources.py` maps legacy Portuguese column names
   to an English canonical schema, normalizes text, and extracts `region`,
   `work_model` and `seniority` using deterministic mappings and regexes.
-- NLP extraction: `likedin_data_pipeline.py` uses big regex dictionaries for
+- NLP extraction: `linkedin_data_pipeline.py` uses big regex dictionaries for
   speed and reliability, with optional small LLM fallbacks when regexes fail.
 - Embeddings: `generate_embeddings.py` builds a compact text per job and
   runs a SentenceTransformers model to produce vectors saved as `embeddings.npy`.

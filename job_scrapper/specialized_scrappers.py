@@ -17,7 +17,18 @@ def scrape_from_linkedin(
     headless: bool = True,
     wait: int = 3,
     cookies_path: str | None = None
-) -> list:
+) -> list[dict]:
+    """Scrape job postings from a LinkedIn search URL.
+    
+    Args:
+        url: The LinkedIn jobs search URL to scrape.
+        headless: Whether to run the browser in headless mode.
+        wait: Seconds to wait after clicking elements.
+        cookies_path: Optional path to a cookies file (currently unused).
+        
+    Returns:
+        A list of dictionaries containing job details (company, role, etc.).
+    """
     
     opts = Options()
     opts.binary_location = "/usr/bin/chromium-browser"
@@ -69,7 +80,16 @@ def scrape_from_linkedin(
     driver.get(url)
     time.sleep(wait)
 
-    def get_data_from_page(driver: webdriver.Chrome, _list_of_dicts: list = None) -> list:
+    def get_data_from_page(driver: webdriver.Chrome, _list_of_dicts: list[dict] | None = None) -> list[dict]:
+        """Extract data from all job cards on the current page.
+        
+        Args:
+            driver: The active WebDriver instance.
+            _list_of_dicts: Accumulated list of job details from previous pages.
+            
+        Returns:
+            A list of dictionaries containing job details.
+        """
         if _list_of_dicts:
             results = _list_of_dicts
         else:

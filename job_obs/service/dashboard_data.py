@@ -142,7 +142,7 @@ def process_benefits(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
     return df, benefit_list
 
 
-def normalizar(txt):
+def normalizar(txt: str | None) -> str | None:
     """Normalize text by removing accents and converting to lower case."""
     if txt is None:
         return None

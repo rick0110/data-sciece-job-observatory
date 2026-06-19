@@ -25,3 +25,12 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Ignore heavy generated data files
+data/*.json
+data/*.npy
+data/vagas_unificadas.csv
+data/vagas_processadas.csv
+
+# Ignore large generated analysis HTML files
+analisys_html/projeto_final.html

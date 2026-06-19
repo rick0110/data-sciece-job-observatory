@@ -62,18 +62,21 @@ app = Flask(__name__)
 # Dashboard page and API for search
 # =========================
 @app.template_filter('currency')
-def currency_filter(value):
+def currency_filter(value: float | None) -> str:
+    """Format a numeric value as Brazilian Real currency."""
     if value is None:
         return "—"
     return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 @app.route('/')
-def index():
+def index() -> str:
+    """Render the landing page."""
     return render_template('index.html')
 
 
 @app.route('/dashboard')
-def dashboard():
+def dashboard() -> str:
+    """Render the dashboard using the precomputed context."""
     return render_template('dashboard.html', **context)
 
 
@@ -164,7 +167,8 @@ def nova_vaga():
 # Data analysis detailed page
 # ============================
 @app.route('/analisys_secondary_files/<path:filename>')
-def analisys_assets(filename):
+def analisys_assets(filename: str):
+    """Serve secondary assets for analysis files."""
     base_assets = os.path.abspath('./analisys_secondary_files')
     full_path = os.path.abspath(os.path.join(base_assets, filename))
     if not full_path.startswith(base_assets) or not os.path.isfile(full_path):
@@ -177,7 +181,8 @@ def analisys_assets(filename):
     return resp
 
 @app.route('/analisys_html', methods=['GET', 'POST']) 
-def analisys_detailed():
+def analisys_detailed() -> str:
+    """Render the gallery of analysis files."""
     # =============================
     # =============================
     #   FILTRAGEM DE POSTS POSTERIORMENTE
@@ -212,7 +217,8 @@ def analisys_detailed():
     return render_template('analisys-detailed.html', dict_analysis=dict_analysis)
 
 @app.route('/analisys_html/<path:filename>')
-def serve_analysis_file(filename):
+def serve_analysis_file(filename: str) -> str:
+    """Serve a specific analysis file rendered from Markdown."""
     base_dir = './analisys_html'
     full_path = os.path.join(base_dir, filename)
     post = frontmatter.load(full_path)

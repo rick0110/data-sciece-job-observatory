@@ -15,6 +15,11 @@ def get_project_root() -> Path:
 
 
 def main(headless: bool = False) -> None:
+    """Run the scraper over all URLs in links_linkedin.txt and save to JSON.
+    
+    Args:
+        headless: Whether to run the scraper in headless mode.
+    """
     project_root = get_project_root()
     links_path = Path(__file__).resolve().parent / ".config" / "links_linkedin.txt"
     output_path = project_root / "data" / "linkedin_data_raw.json"

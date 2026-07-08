@@ -149,6 +149,51 @@ ROLE_REGEX: Dict[str, str] = {
     "link_builder": r"\b(link\s+builder)\b"
 }
 
+# Shared regex vocabulary used both by `extract_information_regex` below and by
+# other manually-scraped sources in `data_treatment/merge_data_sources.py`, so
+# that all sources classify benefits/work model/etc. against the same
+# controlled list instead of drifting into free-text noise.
+EXTRACTION_PATTERNS: Dict[str, Dict[str, str]] = {
+    "work_model": {
+        "remote": r"\b(remoto|remote|home\s*office|trabalho\s*remoto|100%\s*remoto|full\s*remote|fully\s*remote|wfh|work\s*from\s*home|trabajo\s*remoto|trabalhe\s*de\s*casa)\b",
+        "hybrid": r"\b(h[ií]brido|hybrid|semi\s*presencial|presencial\s+e\s+remoto|remoto\s+e\s+presencial)\b",
+        "on-site": r"\b(presencial|on\s*site|in\s*office|in\s*person|no\s*escrit[óo]rio)\b",
+    },
+    "contract_type": {
+        "CLT": r"\b(clt|carteira\s*assinada|efetivo|regime\s*clt)\b",
+        "PJ": r"\b(pj|pessoa\s*jur[íi]dica|cnpj|prestador|contractor)\b",
+        "freelance": r"\b(freelance|freelancer|aut[ôo]nomo|freela)\b",
+        "temporary": r"\b(tempor[áa]rio|temporary|contrato\s*tempor[áa]rio)\b",
+        "internship": r"\b(est[áa]gio|internship|intern\b)\b",
+    },
+    "salary": {
+        "pattern": r"(?:sal[áa]rio|remunera[çc][ãa]o|compensation|salary|pay|wage)[:\s]*(?:de\s+)?(?:r\$|brl|usd|\$)?\s*[\d\.,]+(?:\s*(?:a|to|-|–)\s*(?:r\$|brl|usd|\$)?\s*[\d\.,]+)?(?:\s*(?:k|mil|thousand|per\s+(?:month|year|m[êe]s|ano)))?",
+    },
+    "experience_years": {
+        "pattern": r"(?:(\d+)\s*(?:\+|ou\s*mais|or\s*more|years?)?\s*(?:anos?|years?)\s*(?:de\s+)?(?:experi[êe]ncia|experience))|(?:(?:experi[êe]ncia|experience)\s*(?:de\s+)?(\d+)\s*(?:\+|ou\s*mais|or\s*more)?\s*(?:anos?|years?))|(?:(\d+)\s*(?:\+|a|\-|to)\s*(\d+)\s*(?:anos?|years?))",
+    },
+    "technologies": {
+        "pattern": r"\b(python|java(?:script)?|typescript|react|angular|vue|node\.?js|sql|nosql|mongodb|postgresql|mysql|redis|docker|kubernetes|k8s|aws|azure|gcp|git|linux|spark|airflow|kafka|hadoop|terraform|jenkins|ci\s*/\s*cd|machine\s*learning|deep\s*learning|nlp|tensorflow|pytorch|scikit|pandas|numpy|power\s*bi|tableau|excel|r\b|scala|golang|go\b|rust|c\+\+|c#|\.net|php|ruby|rails|django|flask|fastapi|spring|kotlin|swift|flutter|react\s*native)\b",
+    },
+    "education": {
+        "graduation": r"\b(gradua[çc][ãa]o|superior|bachelor|bacharelado|licenciatura|faculdade|universidade|degree)\b",
+        "post_graduation": r"\b(p[óo]s[\-\s]?gradua[çc][ãa]o|especializa[çc][ãa]o|mba|post[\-\s]?graduate)\b",
+        "masters": r"\b(mestrado|master['']?s?|m\.?sc\.?)\b",
+        "phd": r"\b(doutorado|phd|ph\.?d\.?|doctor)\b",
+    },
+    "languages": {
+        "english": r"\b(ingl[êe]s|english)\b",
+        "spanish": r"\b(espanhol|spanish|castellano)\b",
+        "portuguese": r"\b(portugu[êe]s|portuguese)\b",
+        "french": r"\b(franc[êe]s|french)\b",
+        "german": r"\b(alem[ãa]o|german|deutsch)\b",
+    },
+    "benefits": {
+        "pattern": r"\b(vale[\-\s]?(?:refei[çc][ãa]o|alimenta[çc][ãa]o|transporte|vr|va|vt)|plano\s*de\s*sa[úu]de|assist[êe]ncia\s*m[ée]dica|dental|odontol[óo]gico|gympass|totalpass|seguro\s*de\s*vida|pln|plr|bonifica[çc][ãa]o|bonus|13[ºo]|f[ée]rias|day\s*off|birthday\s*off|stock\s*options|equity|a[çc][õo]es|aux[íi]lio[\-\s]?(?:creche|home\s*office|educa[çc][ãa]o)|health\s*insurance|401k)\b",
+    },
+}
+
+
 class LinkedInDataPipeline:
     """Class for processing and extracting job posting data from LinkedIn.
 
@@ -411,47 +456,10 @@ class LinkedInDataPipeline:
             print(f"Coluna {normalized_col} não encontrada")
             return
         
-        # regex patterns for each field
-        extraction_patterns = {
-            "work_model": {
-                "remote": r"\b(remoto|remote|home\s*office|trabalho\s*remoto|100%\s*remoto|full\s*remote|fully\s*remote|wfh|work\s*from\s*home|trabajo\s*remoto|trabalhe\s*de\s*casa)\b",
-                "hybrid": r"\b(h[ií]brido|hybrid|semi\s*presencial|presencial\s+e\s+remoto|remoto\s+e\s+presencial)\b",
-                "on-site": r"\b(presencial|on\s*site|in\s*office|in\s*person|no\s*escrit[óo]rio)\b",
-            },
-            "contract_type": {
-                "CLT": r"\b(clt|carteira\s*assinada|efetivo|regime\s*clt)\b",
-                "PJ": r"\b(pj|pessoa\s*jur[íi]dica|cnpj|prestador|contractor)\b",
-                "freelance": r"\b(freelance|freelancer|aut[ôo]nomo|freela)\b",
-                "temporary": r"\b(tempor[áa]rio|temporary|contrato\s*tempor[áa]rio)\b",
-                "internship": r"\b(est[áa]gio|internship|intern\b)\b",
-            },
-            "salary": {
-                "pattern": r"(?:sal[áa]rio|remunera[çc][ãa]o|compensation|salary|pay|wage)[:\s]*(?:de\s+)?(?:r\$|brl|usd|\$)?\s*[\d\.,]+(?:\s*(?:a|to|-|–)\s*(?:r\$|brl|usd|\$)?\s*[\d\.,]+)?(?:\s*(?:k|mil|thousand|per\s+(?:month|year|m[êe]s|ano)))?",
-            },
-            "experience_years": {
-                "pattern": r"(?:(\d+)\s*(?:\+|ou\s*mais|or\s*more|years?)?\s*(?:anos?|years?)\s*(?:de\s+)?(?:experi[êe]ncia|experience))|(?:(?:experi[êe]ncia|experience)\s*(?:de\s+)?(\d+)\s*(?:\+|ou\s*mais|or\s*more)?\s*(?:anos?|years?))|(?:(\d+)\s*(?:\+|a|\-|to)\s*(\d+)\s*(?:anos?|years?))",
-            },
-            "technologies": {
-                "pattern": r"\b(python|java(?:script)?|typescript|react|angular|vue|node\.?js|sql|nosql|mongodb|postgresql|mysql|redis|docker|kubernetes|k8s|aws|azure|gcp|git|linux|spark|airflow|kafka|hadoop|terraform|jenkins|ci\s*/\s*cd|machine\s*learning|deep\s*learning|nlp|tensorflow|pytorch|scikit|pandas|numpy|power\s*bi|tableau|excel|r\b|scala|golang|go\b|rust|c\+\+|c#|\.net|php|ruby|rails|django|flask|fastapi|spring|kotlin|swift|flutter|react\s*native)\b",
-            },
-            "education": {
-                "graduation": r"\b(gradua[çc][ãa]o|superior|bachelor|bacharelado|licenciatura|faculdade|universidade|degree)\b",
-                "post_graduation": r"\b(p[óo]s[\-\s]?gradua[çc][ãa]o|especializa[çc][ãa]o|mba|post[\-\s]?graduate)\b",
-                "masters": r"\b(mestrado|master['']?s?|m\.?sc\.?)\b",
-                "phd": r"\b(doutorado|phd|ph\.?d\.?|doctor)\b",
-            },
-            "languages": {
-                "english": r"\b(ingl[êe]s|english)\b",
-                "spanish": r"\b(espanhol|spanish|castellano)\b",
-                "portuguese": r"\b(portugu[êe]s|portuguese)\b",
-                "french": r"\b(franc[êe]s|french)\b",
-                "german": r"\b(alem[ãa]o|german|deutsch)\b",
-            },
-            "benefits": {
-                "pattern": r"\b(vale[\-\s]?(?:refei[çc][ãa]o|alimenta[çc][ãa]o|transporte|vr|va|vt)|plano\s*de\s*sa[úu]de|assist[êe]ncia\s*m[ée]dica|dental|odontol[óo]gico|gympass|totalpass|seguro\s*de\s*vida|pln|plr|bonifica[çc][ãa]o|bonus|13[ºo]|f[ée]rias|day\s*off|birthday\s*off|stock\s*options|equity|a[çc][õo]es|aux[íi]lio[\-\s]?(?:creche|home\s*office|educa[çc][ãa]o)|health\s*insurance|401k)\b",
-            },
-        }
-        
+        # Reuse the shared regex vocabulary (module-level EXTRACTION_PATTERNS)
+        # so LinkedIn and the manually-scraped sources classify fields consistently.
+        extraction_patterns = EXTRACTION_PATTERNS
+
         for col in cols:
             self.df[col] = "not_specified"
         

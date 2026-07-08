@@ -1,17 +1,48 @@
 {% extends "base.html" %}
 
+{% macro chart_card(viz, height=420) %}
+  {% if viz %}
+  <div class="card shadow-sm border-0 h-100">
+    <div class="card-body">
+      <h3 class="h5 mb-1">{{ viz.title }}</h3>
+      <p class="mb-3 text-muted small">{{ viz.description }}</p>
+      <div class="chart-wrapper fade-in" data-viz-id="{{ viz.id }}">
+        <div class="chart-loader" aria-hidden="true">
+          <div class="spinner" role="status" aria-label="Carregando..."></div>
+        </div>
+        <div id="{{ viz.id }}" class="plotly-chart" style="height: {{ height }}px;"></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endmacro %}
+
 {% block content %}
+{% set viz_by_id = {} %}
+{% for viz in visualizations %}{% set _ = viz_by_id.update({viz.id: viz}) %}{% endfor %}
+
 <div class="py-4">
   <h1 class="display-5 fw-bold mb-3">Dashboard do Mercado de Trabalho em Dados</h1>
   <p class="lead text-muted">Explore as principais visualizações geradas automaticamente a partir do conjunto de dados coletado pelo observatório.</p>
 </div>
 
+<div class="alert alert-secondary d-flex gap-3 align-items-start mb-5" role="note">
+  <span class="fs-4" aria-hidden="true">ℹ️</span>
+  <div>
+    <strong>Sobre os dados.</strong>
+    Este painel combina vagas individuais coletadas manualmente (Salário Transparente, Catho, portais Gupy) com
+    referências salariais agregadas do Glassdoor por empresa/cargo. Nem toda fonte informa localização, modalidade
+    de trabalho ou benefícios — por isso cada gráfico mostra, no canto inferior direito, quantos registros
+    (<em>records used</em>) foram de fato utilizados na visualização.
+  </div>
+</div>
+
 {% if summary %}
-<div class="row g-4 mb-5">
-  <div class="col-md-3">
-    <div class="card shadow-sm border-5 h-100 rounded-5">
-      <div class="card-body rounded-5">
-        <h6 class="text-uppercase text-muted">Registros totais</h6>
+<div class="row g-4 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">Registros totais</h6>
           <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
           <h3 class="mb-0 hidden-until-ready">
             <span class="count-up" data-value="{{ summary.total_registros }}">{{ summary.total_registros }}</span>
@@ -19,10 +50,10 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card shadow-sm border-5 h-100 rounded-5">
-      <div class="card-body rounded-5">
-        <h6 class="text-uppercase text-muted">Com salário informado</h6>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">Com salário informado</h6>
           <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
           <h3 class="mb-0 hidden-until-ready">
             <span class="count-up" data-value="{{ summary.registros_com_salario }}">{{ summary.registros_com_salario }}</span>
@@ -30,10 +61,10 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card shadow-sm border-5 h-100 rounded-5">
-      <div class="card-body rounded-5">
-        <h6 class="text-uppercase text-muted">Salário base médio</h6>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">Salário base médio</h6>
           <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
           <h3 class="mb-0 hidden-until-ready">
             <span class="count-up currency" data-value="{{ summary.media_salario }}">{{ summary.media_salario | currency }}</span>
@@ -41,14 +72,49 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card shadow-sm border-5 h-100 rounded-5">
-      <div class="card-body rounded-5">
-        <h6 class="text-uppercase text-muted">Salário base mediano</h6>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">Salário base mediano</h6>
           <div class="skeleton skeleton-title skeleton-60" data-skel="summary"></div>
           <h3 class="mb-0 hidden-until-ready">
             <span class="count-up currency" data-value="{{ summary.mediana_salario }}">{{ summary.mediana_salario | currency }}</span>
           </h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-5">
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4 bg-body-tertiary">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">Estado com mais vagas</h6>
+        <h4 class="mb-0">{{ summary.estado_com_mais_vagas or '—' }}</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4 bg-body-tertiary">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">% remoto (entre informadas)</h6>
+        <h4 class="mb-0">{{ summary.percentual_remoto ~ '%' if summary.percentual_remoto is not none else '—' }}</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4 bg-body-tertiary">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">Empresas distintas</h6>
+        <h4 class="mb-0">{{ summary.total_empresas }}</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100 rounded-4 bg-body-tertiary">
+      <div class="card-body rounded-4">
+        <h6 class="text-uppercase text-muted small">Fontes de dados</h6>
+        <h4 class="mb-0">{{ summary.total_fontes }}</h4>
       </div>
     </div>
   </div>
@@ -115,24 +181,43 @@
 {% endif %}
 
 {% if visualizations %}
-  {% for viz in visualizations %}
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div>
-            <h2 class="h4 mb-1">{{ viz.title }}</h2>
-            <p class="mb-0 text-muted">{{ viz.description }}</p>
-          </div>
-        </div>
-        <div class="chart-wrapper fade-in" data-viz-id="{{ viz.id }}">
-          <div class="chart-loader" aria-hidden="true">
-            <div class="spinner" role="status" aria-label="Carregando..."></div>
-          </div>
-          <div id="{{ viz.id }}" class="plotly-chart" style="height: 500px;"></div>
-        </div>
-      </div>
+  <section class="mb-5">
+    <h2 class="h3 mb-1">💰 Salários</h2>
+    <p class="text-muted mb-4">Como a remuneração varia por nível de senioridade.</p>
+    <div class="row g-4">
+      <div class="col-12 col-xl-6">{{ chart_card(viz_by_id.get('chart-salary-level')) }}</div>
+      <div class="col-12 col-xl-6">{{ chart_card(viz_by_id.get('chart-boxplot-level')) }}</div>
     </div>
-  {% endfor %}
+  </section>
+
+  <section class="mb-5">
+    <h2 class="h3 mb-1">🗺️ Geografia</h2>
+    <p class="text-muted mb-4">Onde as vagas estão concentradas e como o salário médio varia por estado.</p>
+    <div class="row g-4 mb-4">
+      <div class="col-12">{{ chart_card(viz_by_id.get('chart-map'), height=560) }}</div>
+    </div>
+    <div class="row g-4">
+      <div class="col-12 col-xl-6">{{ chart_card(viz_by_id.get('chart-states')) }}</div>
+      <div class="col-12 col-xl-6">{{ chart_card(viz_by_id.get('chart-heatmap')) }}</div>
+    </div>
+  </section>
+
+  <section class="mb-5">
+    <h2 class="h3 mb-1">💼 Carreira &amp; modalidade</h2>
+    <p class="text-muted mb-4">Cargos mais bem remunerados e como o trabalho remoto se distribui.</p>
+    <div class="row g-4">
+      <div class="col-12 col-xl-6">{{ chart_card(viz_by_id.get('chart-career')) }}</div>
+      <div class="col-12 col-xl-6">{{ chart_card(viz_by_id.get('chart-work-modality')) }}</div>
+    </div>
+  </section>
+
+  <section class="mb-5">
+    <h2 class="h3 mb-1">🎁 Benefícios</h2>
+    <p class="text-muted mb-4">Os benefícios mais recorrentes nas vagas analisadas.</p>
+    <div class="row g-4">
+      <div class="col-12">{{ chart_card(viz_by_id.get('chart-benefits'), height=560) }}</div>
+    </div>
+  </section>
 {% else %}
   <div class="alert alert-warning">Nenhum dado disponível para exibir no momento.</div>
 {% endif %}

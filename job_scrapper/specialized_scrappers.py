@@ -30,12 +30,14 @@ def scrape_from_linkedin(
         A list of dictionaries containing job details (company, role, etc.).
     """
     
+    # Persistent profile dir so a LinkedIn login survives between scrape
+    # runs. Must be portable across machines/users (previously hardcoded to
+    # a `/home/richa/...` path that only existed on one developer's machine).
+    profile_dir = Path.home() / ".cache" / "selenium-linkedin-profile"
+    profile_dir.mkdir(parents=True, exist_ok=True)
+
     opts = Options()
-    opts.binary_location = "/usr/bin/chromium-browser"
-    PROFILE_DIR = "/home/richa/.cache/selenium-linkedin-profile"
-    opts = Options()
-    opts.binary_location = "/usr/bin/chromium-browser"
-    opts.add_argument(f"--user-data-dir={PROFILE_DIR}")
+    opts.add_argument(f"--user-data-dir={profile_dir}")
     opts.add_argument("--profile-directory=Default")
 
     if headless:
@@ -48,7 +50,6 @@ def scrape_from_linkedin(
     opts.add_argument("--disable-extensions")
     opts.add_argument("--disable-software-rasterizer")
     opts.add_argument("--no-zygote")
-    opts.add_argument("--user-data-dir=/tmp/chrome-profile")
 
     # Locate a Chrome/Chromium binary in PATH and set it if found.
     chrome_candidates = ("/usr/bin/chromium-browser", "google-chrome", "google-chrome-stable", "chromium-browser", "chromium")

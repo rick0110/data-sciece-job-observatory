@@ -10,26 +10,11 @@ import yaml
 import frontmatter 
 import markdown
 
-# ========================
-# Mapeamentos de display para colunas unificadas
-# ========================
-SENIORITY_DISPLAY_LABELS = {
-    "estagio": "Estágio",
-    "junior": "Júnior",
-    "pleno": "Pleno",
-    "senior": "Sênior",
-    "staff": "Staff",
-    "lead": "Líder / Coordenador",
-    "manager": "Gerente",
-    "not_specified": "Não informado",
-}
-
-WORK_MODEL_DISPLAY_LABELS = {
-    "remote": "Remoto",
-    "hybrid": "Híbrido",
-    "on-site": "Presencial",
-    "not_specified": "Não informado",
-}
+from job_obs.service.display_labels import (
+    SENIORITY_DISPLAY_LABELS,
+    WORK_MODEL_DISPLAY_LABELS,
+    role_display_label,
+)
 
 # ========================
 # Load data and model for search
@@ -64,7 +49,7 @@ app = Flask(__name__)
 @app.template_filter('currency')
 def currency_filter(value: float | None) -> str:
     """Format a numeric value as Brazilian Real currency."""
-    if value is None:
+    if value is None or pd.isna(value):
         return "—"
     return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -105,14 +90,20 @@ def api_search():
         
         records = []
         for i, row in subset[cols].iterrows():
-            # Mapear seniority e work_model para labels de display
-            seniority_display = SENIORITY_DISPLAY_LABELS.get(row.get('seniority'), row.get('seniority'))
-            work_model_display = WORK_MODEL_DISPLAY_LABELS.get(row.get('work_model'), row.get('work_model'))
-            
+            # Mapear seniority e work_model para labels de display. NaN é
+            # tratado antes do lookup: `dict.get(nan, nan)` nunca casa e
+            # devolveria o próprio NaN, que o `jsonify` serializaria como o
+            # token inválido `NaN` (quebra `JSON.parse` no navegador).
+            seniority = row.get('seniority')
+            seniority_display = SENIORITY_DISPLAY_LABELS.get(seniority, seniority) if pd.notna(seniority) else None
+            work_model = row.get('work_model')
+            work_model_display = WORK_MODEL_DISPLAY_LABELS.get(work_model, work_model) if pd.notna(work_model) else None
+            region = row.get('region')
+
             rec = {
-                'cargo': row.get('role'),
+                'cargo': role_display_label(row.get('role')),
                 'nivel': seniority_display,
-                'estado': row.get('region'),
+                'estado': region if pd.notna(region) else None,
                 'modalidade_trabalho': work_model_display,
                 'salario_base': float(row['salary']) if pd.notna(row.get('salary')) else None,
                 'remuneracao_total_mensal': float(row['total_monthly_compensation']) if 'total_monthly_compensation' in subset.columns and pd.notna(row.get('total_monthly_compensation')) else None,
@@ -229,4 +220,9 @@ def serve_analysis_file(filename: str) -> str:
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5005, debug=True)
+    # Debug mode enables the Werkzeug interactive debugger, which allows
+    # arbitrary code execution for anyone who can trigger an unhandled
+    # exception. Only opt in explicitly for local development; never in a
+    # deployment reachable from outside your machine.
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+    app.run(host='0.0.0.0', port=5005, debug=debug_mode)

@@ -34,3 +34,11 @@ data/vagas_processadas.csv
 
 # Ignore large generated analysis HTML files
 analisys_html/projeto_final.html
+
+# LaTeX build artifacts (docs/)
+*.aux
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz

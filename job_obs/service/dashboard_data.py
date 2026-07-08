@@ -37,25 +37,50 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 
+from job_obs.service.display_labels import (
+    SENIORITY_DISPLAY_LABELS,
+    WORK_MODEL_DISPLAY_LABELS,
+    role_display_label,
+)
 
-# Mapeamento de senioridade para labels em português (display)
-SENIORITY_DISPLAY_LABELS = {
-    "estagio": "Estágio",
-    "junior": "Júnior",
-    "pleno": "Pleno",
-    "senior": "Sênior",
-    "staff": "Staff",
-    "lead": "Líder / Coordenador",
-    "manager": "Gerente",
-    "not_specified": "Não informado",
+# Fixed categorical color assignment (validated 8-hue palette, CVD-safe order)
+# so the same seniority level always renders in the same color across every
+# chart on the dashboard, instead of each chart picking its own qualitative
+# sequence (previously D3 for the light histogram, a different ad-hoc list
+# for its dark twin, and Pastel for the boxplot — three different colors for
+# "Sênior" depending on which chart you looked at).
+_MUTED_GRAY = "#898781"
+SENIORITY_COLOR_MAP_LIGHT = {
+    "Estágio": "#2a78d6",
+    "Júnior": "#1baf7a",
+    "Pleno": "#eda100",
+    "Sênior": "#008300",
+    "Staff": "#4a3aa7",
+    "Líder / Coordenador": "#e34948",
+    "Gerente": "#e87ba4",
+    "Não informado": _MUTED_GRAY,
 }
-
-# Mapeamento de modalidade de trabalho para labels em português (display)
-WORK_MODEL_DISPLAY_LABELS = {
-    "remote": "Remoto",
-    "hybrid": "Híbrido",
-    "on-site": "Presencial",
-    "not_specified": "Não informado",
+SENIORITY_COLOR_MAP_DARK = {
+    "Estágio": "#3987e5",
+    "Júnior": "#199e70",
+    "Pleno": "#c98500",
+    "Sênior": "#008300",
+    "Staff": "#9085e9",
+    "Líder / Coordenador": "#e66767",
+    "Gerente": "#d55181",
+    "Não informado": _MUTED_GRAY,
+}
+WORK_MODEL_COLOR_MAP_LIGHT = {
+    "Remoto": "#2a78d6",
+    "Híbrido": "#1baf7a",
+    "Presencial": "#eda100",
+    "Não informado": _MUTED_GRAY,
+}
+WORK_MODEL_COLOR_MAP_DARK = {
+    "Remoto": "#3987e5",
+    "Híbrido": "#199e70",
+    "Presencial": "#c98500",
+    "Não informado": _MUTED_GRAY,
 }
 
 
@@ -211,14 +236,20 @@ def _figure_to_dict(fig: go.Figure) -> Dict[str, Any]:
     return json.loads(pio.to_json(fig, pretty=False))
 
 
-def _add_data_count_annotation(fig: go.Figure, n_records: int, total_records: int) -> None:
-    """Add an annotation showing the number of records used in the figure."""
+def _add_data_count_annotation(fig: go.Figure, n_records: int, total_records: int, y: float = -0.12) -> None:
+    """Add an annotation showing the number of records used in the figure.
+
+    Args:
+        y: Vertical offset in paper coordinates. Charts with long/rotated
+            x-axis tick labels (e.g. seniority names in the boxplot) need a
+            lower (more negative) value so the annotation doesn't overlap them.
+    """
     fig.add_annotation(
         text=f"Records used: {n_records:,} of {total_records:,} ({100*n_records/total_records:.1f}%)",
         xref="paper",
         yref="paper",
         x=1.0,
-        y=-0.12,
+        y=y,
         showarrow=False,
         font=dict(size=10, color="gray"),
         xanchor="right",
@@ -244,7 +275,7 @@ def build_salary_histogram(df: pd.DataFrame, template='plotly_white') -> Dict[st
         yaxis_title="Quantidade de Vagas",
         bargap=0.05,
         template=template,
-        margin=dict(b=80),
+        margin=dict(b=90),
     )
     fig.update_traces(hovertemplate="Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
     _add_data_count_annotation(fig, n_records, total_records)
@@ -262,65 +293,31 @@ def build_salary_by_level(df: pd.DataFrame, template='plotly_white') -> Dict[str
         lambda x: SENIORITY_DISPLAY_LABELS.get(x, x)
     )
     
-    dark_colors = [
-        "chartreuse",
-        "darksalmon",
-        "darkcyan",
-        "darkkhaki",
-        "cadetblue",
-        "darkorchid",   
-        "firebrick"     
-    ]
-    
     category_order = ["Estágio", "Júnior", "Pleno", "Sênior", "Staff", "Líder / Coordenador", "Gerente", "Não informado"]
-    
-    if template == 'plotly_white':
-        fig = px.histogram(
-            df_level,
-            x="salary",
-            color="seniority_display",
-            nbins=25,
-            barmode="relative",
-            opacity=1,
-            labels={"seniority_display": "Nível"},
-            category_orders={"seniority_display": category_order},
-            color_discrete_sequence=px.colors.qualitative.D3,
-        )
-        fig.update_layout(
-            title="Distribuição de Salários por Nível de Senioridade",
-            xaxis_title="Faixa salarial (R$)",
-            yaxis_title="Quantidade de Vagas",
-            template=template,
-            legend_title="Nível",
-            margin=dict(b=80),
-        )
-        fig.update_traces(hovertemplate="Nível: %{legendgroup}<br>Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
-        _add_data_count_annotation(fig, n_records, total_records)
-        return _figure_to_dict(fig)
-    
-    elif template == 'plotly_dark':
-        fig = px.histogram(
-            df_level,
-            x="salary",
-            color="seniority_display",
-            nbins=25,
-            barmode="relative",
-            opacity=1,
-            labels={"seniority_display": "Nível"},
-            category_orders={"seniority_display": category_order},
-            color_discrete_sequence=dark_colors,
-        )
-        fig.update_layout(
-            title="Distribuição de Salários por Nível de Senioridade",
-            xaxis_title="Faixa salarial (R$)",
-            yaxis_title="Quantidade de Vagas",
-            template=template,
-            legend_title="Nível",
-            margin=dict(b=80),
-        )
-        fig.update_traces(hovertemplate="Nível: %{legendgroup}<br>Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
-        _add_data_count_annotation(fig, n_records, total_records)
-        return _figure_to_dict(fig)
+    color_map = SENIORITY_COLOR_MAP_LIGHT if template == 'plotly_white' else SENIORITY_COLOR_MAP_DARK
+
+    fig = px.histogram(
+        df_level,
+        x="salary",
+        color="seniority_display",
+        nbins=25,
+        barmode="relative",
+        opacity=1,
+        labels={"seniority_display": "Nível"},
+        category_orders={"seniority_display": category_order},
+        color_discrete_map=color_map,
+    )
+    fig.update_layout(
+        title="Distribuição de Salários por Nível de Senioridade",
+        xaxis_title="Faixa salarial (R$)",
+        yaxis_title="Quantidade de Vagas",
+        template=template,
+        legend_title="Nível",
+        margin=dict(b=90),
+    )
+    fig.update_traces(hovertemplate="Nível: %{legendgroup}<br>Salário: R$ %{x:,.0f}<br>Vagas: %{y}<extra></extra>")
+    _add_data_count_annotation(fig, n_records, total_records)
+    return _figure_to_dict(fig)
 
 
 def build_boxplot_by_level(df: pd.DataFrame, template='plotly_white') -> Dict[str, Any]:
@@ -332,23 +329,29 @@ def build_boxplot_by_level(df: pd.DataFrame, template='plotly_white') -> Dict[st
     df_box["seniority_display"] = df_box["seniority"].map(
         lambda x: SENIORITY_DISPLAY_LABELS.get(x, x)
     )
-    
+    category_order = ["Estágio", "Júnior", "Pleno", "Sênior", "Staff", "Líder / Coordenador", "Gerente", "Não informado"]
+    color_map = SENIORITY_COLOR_MAP_LIGHT if template == 'plotly_white' else SENIORITY_COLOR_MAP_DARK
+
     fig = px.box(
         df_box,
         x="seniority_display",
         y="salary",
         color="seniority_display",
-        color_discrete_sequence=px.colors.qualitative.Pastel,
+        category_orders={"seniority_display": category_order},
+        color_discrete_map=color_map,
     )
     fig.update_layout(
         title="Boxplot de Salário Base por Nível",
         xaxis_title="Nível",
         yaxis_title="Salário Base (R$)",
+        xaxis_tickangle=-30,
         template=template,
         showlegend=False,
-        margin=dict(b=80),
+        margin=dict(b=110),
     )
-    _add_data_count_annotation(fig, n_records, total_records)
+    # Lower than the default offset: rotated category labels (e.g. "Líder /
+    # Coordenador") need extra clearance so the annotation doesn't sit on top of them.
+    _add_data_count_annotation(fig, n_records, total_records, y=-0.28)
     return _figure_to_dict(fig)
 
 
@@ -377,7 +380,7 @@ def build_violin_by_level(df: pd.DataFrame, template='plotly_white') -> Dict[str
         yaxis_title="Salário Base (R$)",
         template=template,
         showlegend=False,
-        margin=dict(b=80),
+        margin=dict(b=90),
     )
     _add_data_count_annotation(fig, n_records, total_records)
     return _figure_to_dict(fig)
@@ -411,7 +414,7 @@ def build_states_bar(df: pd.DataFrame, template='plotly_white') -> Dict[str, Any
         yaxis_title="Estado",
         template=template,
         coloraxis_showscale=False,
-        margin=dict(b=80),
+        margin=dict(b=90),
     )
     fig.update_traces(hovertemplate="Estado: %{y}<br>Vagas: %{x}<extra></extra>")
     _add_data_count_annotation(fig, n_records, total_records)
@@ -453,10 +456,11 @@ def build_heatmap_state_level(df: pd.DataFrame, template='plotly_white') -> Dict
         title="Heatmap - Salário Médio por Estado e Nível",
         xaxis_title="Nível",
         yaxis_title="Estado",
+        xaxis_tickangle=-30,
         template=template,
-        margin=dict(b=80),
+        margin=dict(b=110),
     )
-    _add_data_count_annotation(fig, n_records, total_records)
+    _add_data_count_annotation(fig, n_records, total_records, y=-0.28)
     return _figure_to_dict(fig)
 
 def build_salary_comparison(df: pd.DataFrame, template='plotly_white') -> Dict[str, Any]:
@@ -503,39 +507,52 @@ def build_salary_comparison(df: pd.DataFrame, template='plotly_white') -> Dict[s
         xaxis_title="Salário Base (R$)",
         yaxis_title="Remuneração Total (R$)",
         template=template,
-        margin=dict(b=80),
+        margin=dict(b=90),
     )
     fig.update_traces(hovertemplate="Salário Base: R$ %{x:,.0f}<br>Remuneração Total: R$ %{y:,.0f}<extra></extra>")
     _add_data_count_annotation(fig, n_filtered, total_records)
     return _figure_to_dict(fig)
 
 def build_work_modality(df: pd.DataFrame, template='plotly_white') -> Dict[str, Any]:
-    """Build a pie chart for work modality distribution."""
+    """Build a bar chart of work modality distribution.
+
+    Most sources in this dataset (notably the Glassdoor salary benchmarks)
+    don't report a work modality at all, so "Não informado" would dominate
+    a pie chart with one huge slice and three barely-visible slivers. We
+    instead chart only the jobs that disclosed a modality and let the
+    standard "records used" annotation communicate coverage.
+    """
     total_records = len(df)
-    # Para o gráfico de modalidade, usamos todos os registros
-    # Valores NA são mapeados para "Não informado"
-    df_work = df.copy()
-    df_work["work_model_display"] = df_work["work_model"].map(
-        lambda x: WORK_MODEL_DISPLAY_LABELS.get(x, x) if pd.notna(x) else "Não informado"
-    )
-    
+    df_work = df.dropna(subset=["work_model"]).copy()
+    df_work = df_work[df_work["work_model"] != "not_specified"]
     n_records = len(df_work)
-    
-    modalidades = df_work["work_model_display"].fillna("Não informado").value_counts()
+
+    df_work["work_model_display"] = df_work["work_model"].map(
+        lambda x: WORK_MODEL_DISPLAY_LABELS.get(x, x)
+    )
+
+    modalidades = df_work["work_model_display"].value_counts().sort_values(ascending=True)
     modalidade_df = modalidades.reset_index()
     modalidade_df.columns = ["modalidade", "quantidade"]
-    
-    fig = px.pie(
+
+    color_map = WORK_MODEL_COLOR_MAP_LIGHT if template == 'plotly_white' else WORK_MODEL_COLOR_MAP_DARK
+
+    fig = px.bar(
         modalidade_df,
-        names="modalidade",
-        values="quantidade",
-        color_discrete_sequence=px.colors.qualitative.Set3,
+        x="quantidade",
+        y="modalidade",
+        orientation="h",
+        color="modalidade",
+        color_discrete_map=color_map,
     )
-    fig.update_traces(textposition="inside", texttemplate="%{label}<br>%{percent:.1%}")
+    fig.update_traces(hovertemplate="Modalidade: %{y}<br>Vagas: %{x}<extra></extra>")
     fig.update_layout(
         title="Distribuição de Vagas por Modalidade de Trabalho",
+        xaxis_title="Quantidade de Vagas",
+        yaxis_title="",
         template=template,
-        margin=dict(b=80),
+        showlegend=False,
+        margin=dict(b=90),
     )
     _add_data_count_annotation(fig, n_records, total_records)
     return _figure_to_dict(fig)
@@ -555,7 +572,8 @@ def build_career_analysis(df: pd.DataFrame, template) -> Dict[str, Any]:
     )
     career_df = subset.reset_index()
     career_df.columns = ["role", "salario_medio"]
-    
+    career_df["role"] = career_df["role"].map(role_display_label)
+
     fig = px.bar(
         career_df,
         x="salario_medio",
@@ -570,7 +588,7 @@ def build_career_analysis(df: pd.DataFrame, template) -> Dict[str, Any]:
         yaxis_title="Cargo",
         template=template,
         coloraxis_showscale=False,
-        margin=dict(b=80),
+        margin=dict(b=90),
     )
     fig.update_traces(hovertemplate="Cargo: %{y}<br>Salário Médio: R$ %{x:,.0f}<extra></extra>")
     _add_data_count_annotation(fig, n_records, total_records)
@@ -619,7 +637,7 @@ def build_benefits_analysis(df: pd.DataFrame, benefit_list: List[str], template=
         yaxis_title="Benefício",
         template=template,
         coloraxis_showscale=False,
-        margin=dict(b=80),
+        margin=dict(b=90),
     )
     fig.update_traces(
         hovertemplate="Benefício: %{y}<br>Vagas: %{x}<extra></extra>"
@@ -732,12 +750,34 @@ def build_summary(df: pd.DataFrame) -> Dict[str, Any]:
         if not remuneracoes.empty:
             media_remuneracao = float(remuneracoes.mean())
     
+    # Estado com mais vagas (entre os que informam localização)
+    top_state = None
+    if "region" in df.columns:
+        region_counts = df["region"].dropna()
+        if not region_counts.empty:
+            top_code = region_counts.value_counts().idxmax()
+            top_state = BRAZIL_STATE_NAMES.get(top_code, top_code)
+
+    # % de vagas remotas entre as que informam modalidade
+    pct_remote = None
+    if "work_model" in df.columns:
+        known_model = df[df["work_model"].notna() & (df["work_model"] != "not_specified")]
+        if not known_model.empty:
+            pct_remote = round(100 * (known_model["work_model"] == "remote").mean(), 1)
+
+    n_companies = int(df["company"].nunique()) if "company" in df.columns else 0
+    n_sources = int(df["source"].nunique()) if "source" in df.columns else 0
+
     return {
         "total_registros": total_registros,
         "media_salario": float(salarios.mean()) if not salarios.empty else 0.0,
         "mediana_salario": float(salarios.median()) if not salarios.empty else 0.0,
         "registros_com_salario": n_salarios,
         "registros_com_remuneracao": n_remuneracoes,
+        "estado_com_mais_vagas": top_state,
+        "percentual_remoto": pct_remote,
+        "total_empresas": n_companies,
+        "total_fontes": n_sources,
     }
 
 
@@ -756,29 +796,42 @@ def sample_table(df: pd.DataFrame, limit: int = 15) -> List[Dict[str, Any]]:
     # Colunas a selecionar (no formato unificado)
     unified_cols = ["role", "seniority", "region", "work_model", "salary", "total_monthly_compensation"]
     subset_cols = [col for col in unified_cols if col in df.columns]
-    
-    sample = df[subset_cols].dropna(subset=["salary"]).head(limit).copy()
-    
+
+    candidates = df[subset_cols].dropna(subset=["salary"])
+    # Random (but reproducible) sample instead of the first N rows: sources
+    # are concatenated in a fixed order, so `.head()` would always show the
+    # same single source instead of a representative mix.
+    sample = candidates.sample(n=min(limit, len(candidates)), random_state=42).copy()
+
     # Mapear seniority e work_model para labels de display
     if "seniority" in sample.columns:
         sample["seniority"] = sample["seniority"].map(
             lambda x: SENIORITY_DISPLAY_LABELS.get(x, x)
         )
-    
+
     if "work_model" in sample.columns:
         sample["work_model"] = sample["work_model"].map(
             lambda x: WORK_MODEL_DISPLAY_LABELS.get(x, x) if pd.notna(x) else "Não informado"
         )
-    
+
+    if "role" in sample.columns:
+        sample["role"] = sample["role"].map(role_display_label)
+
     # Renomear para formato esperado pelo frontend
     sample = sample.rename(columns=column_mapping)
     
     records: List[Dict[str, Any]] = []
     for row in sample.to_dict(orient="records"):
-        row["salario_base"] = float(row.get("salario_base", 0)) if row.get("salario_base") is not None else None
+        # `pd.notna` (not `is not None`) is required here: missing numeric
+        # cells come through as NaN, and `float(nan)` is truthy/not-None,
+        # so a naive None-check lets NaN leak into the JSON context. The
+        # Python json module happily writes a bare `NaN` token for it,
+        # which is invalid JSON and breaks `JSON.parse` in the browser.
+        salario = row.get("salario_base")
+        row["salario_base"] = float(salario) if pd.notna(salario) else None
         if "remuneracao_total_mensal" in row:
             value = row.get("remuneracao_total_mensal")
-            row["remuneracao_total_mensal"] = float(value) if value is not None else None
+            row["remuneracao_total_mensal"] = float(value) if pd.notna(value) else None
         records.append(row)
     return records
 
@@ -890,6 +943,9 @@ def main():
     df, benefits = run_merge_pipeline(
         raw_data_path=str(DATA_DIR / "raw_data.csv"),
         linkedin_data_path=str(DATA_DIR / "linkedin_data_raw.json"),
+        catho_path=str(PROJECT_ROOT / "data_preprocess" / "catho.csv"),
+        glassdoor_path=str(PROJECT_ROOT / "data_preprocess" / "glassdoor.csv"),
+        gupy_path=str(PROJECT_ROOT / "data_preprocess" / "cientista_de_dados.csv"),
         output_path=str(DATA_DIR / "vagas_unificadas.csv"),
     )
 
